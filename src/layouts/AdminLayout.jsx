@@ -1,0 +1,70 @@
+import React from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+
+const AdminLayout = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 현재 접속한 곳이 관리자 페이지인지 확인 (/admin 으로 시작하면 관리자)
+  const isAdmin = location.pathname.startsWith("/admin");
+
+  // 메뉴 리스트 분기 (사장님용 vs 관리자용)
+  const MENUS = isAdmin
+    ? [
+        { id: "approval", name: "가입 승인", path: "/admin/approval" },
+        { id: "stores", name: "서비스 이용 목록", path: "/admin/stores" },
+      ]
+    : [
+        { id: "orders", name: "주문 관리", path: "/owner/orders" },
+        { id: "menu", name: "메뉴 관리", path: "/owner/menu" },
+        { id: "sales", name: "매출 관리", path: "/owner/sales" },
+      ];
+
+  return (
+    <div className="min-h-screen bg-toss-grey flex">
+      <nav className="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full z-10">
+        <div className="p-6 border-b border-gray-100">
+          <h1 className="text-xl font-bold text-toss-blue">
+            {isAdmin ? "통합 관리자" : "사장님 광장"}
+          </h1>
+          <p className="text-xs text-toss-light mt-1">
+            {isAdmin ? "서비스 운영 시스템" : "내 매장 관리 시스템"}
+          </p>
+        </div>
+
+        <div className="flex-1 py-4 px-3 space-y-1">
+          {MENUS.map((menu) => (
+            <button
+              key={menu.id}
+              onClick={() => navigate(menu.path)}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
+                location.pathname === menu.path
+                  ? "bg-toss-lightBlue text-toss-blue font-bold"
+                  : "text-toss-light hover:bg-gray-50"
+              }`}
+            >
+              {menu.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-gray-100">
+          <button
+            onClick={() => navigate(isAdmin ? "/admin/login" : "/owner/login")}
+            className="w-full py-2 text-sm text-toss-light hover:text-toss-red transition-colors"
+          >
+            로그아웃
+          </button>
+        </div>
+      </nav>
+
+      <main className="flex-1 ml-64 p-8">
+        <div className="max-w-5xl mx-auto">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default AdminLayout;

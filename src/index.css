@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 전체 배경색과 폰트 설정 */
+body {
+  background-color: #f2f4f6; /* 토스 그레이 */
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #333d4b;
+}
+
+/* 스크롤바 숨기기 (깔끔한 UI 위해) */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* 스크롤바 숨기기 (크롬, 사파리, 엣지) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
+}
