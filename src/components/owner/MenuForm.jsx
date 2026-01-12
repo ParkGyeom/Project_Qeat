@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { MENU_CATEGORIES } from "../../constants/categories";
 
 const MenuForm = ({ initialData, onSubmit, onCancel }) => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("메인");
-  const [image, setImage] = useState(null); // 이미지 데이터 (Base64)
-  const [preview, setPreview] = useState(null); // 미리보기 URL
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
+
+  const isStaffCall = category === "직원호출";
 
   useEffect(() => {
     if (initialData) {
@@ -17,15 +20,21 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
     }
   }, [initialData]);
 
-  // 이미지 파일 선택 핸들러
+  const handleCategoryChange = (e) => {
+    const selectedCategory = e.target.value;
+    setCategory(selectedCategory);
+    if (selectedCategory === "직원호출") {
+      setPrice(0); // 내부 데이터상으로는 0원으로 저장
+    }
+  };
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // 파일을 읽어서 미리보기 URL 생성
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result); // 데이터 저장
-        setPreview(reader.result); // 미리보기 보여주기
+        setImage(reader.result);
+        setPreview(reader.result);
       };
       reader.readAsDataURL(file);
     }
@@ -36,9 +45,9 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
     onSubmit({
       id: initialData ? initialData.id : Date.now(),
       name,
-      price: Number(price),
+      price: isStaffCall ? 0 : Number(price),
       category,
-      image, // 이미지 데이터 포함
+      image,
       isSoldOut: initialData ? initialData.isSoldOut : false,
     });
   };
@@ -59,14 +68,12 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
             <div className="flex items-center justify-center w-full">
               <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 hover:border-toss-blue transition bg-gray-50 overflow-hidden relative">
                 {preview ? (
-                  // 이미지가 있으면 꽉 차게 보여줌
                   <img
                     src={preview}
                     alt="Preview"
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  // 이미지가 없으면 업로드 안내
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <div className="text-4xl text-gray-300 mb-2">+</div>
                     <p className="text-sm text-gray-400 font-bold">
@@ -74,8 +81,6 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
                     </p>
                   </div>
                 )}
-
-                {/* 실제 파일 인풋 (숨김) */}
                 <input
                   type="file"
                   className="hidden"
@@ -98,23 +103,25 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
             )}
           </div>
 
-          {/* 2. 기존 입력 필드들 */}
+          {/* 2. 카테고리 선택 */}
           <div>
             <label className="block text-sm font-bold text-toss-dark mb-1">
               카테고리
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={handleCategoryChange}
               className="w-full p-3 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50"
             >
-              <option value="메인">메인 메뉴</option>
-              <option value="사이드">사이드 메뉴</option>
-              <option value="음료">음료/주류</option>
-              <option value="직원호출">직원호출</option>
+              {MENU_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
             </select>
           </div>
 
+          {/* 3. 메뉴 이름 */}
           <div>
             <label className="block text-sm font-bold text-toss-dark mb-1">
               메뉴 이름
@@ -123,24 +130,37 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="예: 후라이드 치킨"
+              placeholder={
+                isStaffCall
+                  ? "예: 물 좀 주세요, 불판 갈아주세요"
+                  : "예: 후라이드 치킨"
+              }
               className="w-full p-3 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50"
               required
             />
           </div>
 
+          {/* 4. 가격 영역 (직원호출 시 텍스트로 변경) */}
           <div>
             <label className="block text-sm font-bold text-toss-dark mb-1">
               가격
             </label>
-            <input
-              type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="숫자만 입력 (예: 18000)"
-              className="w-full p-3 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50"
-              required
-            />
+            {isStaffCall ? (
+              // 직원호출 카테고리일 때 보여지는 커스텀 박스
+              <div className="w-full p-3 bg-blue-50 border border-blue-100 rounded-xl text-toss-blue font-bold text-center">
+                호출 (비결제 항목)
+              </div>
+            ) : (
+              // 일반 메뉴일 때 보여지는 숫자 입력창
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="숫자만 입력 (예: 18000)"
+                className="w-full p-3 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50"
+                required
+              />
+            )}
           </div>
 
           <div className="flex gap-2 mt-6">

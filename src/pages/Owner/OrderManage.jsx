@@ -1,71 +1,79 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import OrderCard from "../../components/owner/OrderCard";
+import { getOrders, updateOrder } from "../../utils/mockApi";
 
-// 테스트용 접수 대기 데이터
-const INITIAL_ACTIVE_ORDERS = [
-  {
-    id: 1,
-    tableNo: 1,
-    time: "18:30",
-    totalPrice: 23000,
-    items: [
-      { name: "후라이드 치킨", count: 1, price: 18000 },
-      { name: "콜라 500ml", count: 1, price: 2000 },
-      { name: "공기밥", count: 3, price: 1000 },
-    ],
-  },
-  {
-    id: 2,
-    tableNo: 3,
-    time: "18:32",
-    totalPrice: 4500,
-    items: [{ name: "생맥주 500cc", count: 1, price: 4500 }],
-  },
-];
+const getTimeLabel = (order, mode) => {
+  // mode: "order" | "done"
+  const parse = (v) => {
+    if (!v) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
 
-// 테스트용 이미 완료된 데이터
-const INITIAL_COMPLETED_ORDERS = [
-  {
-    id: 99,
-    tableNo: 7,
-    time: "17:50",
-    totalPrice: 12000,
-    items: [
-      { name: "감자튀김", count: 1, price: 7000 },
-      { name: "치즈볼", count: 1, price: 5000 },
-    ],
-  },
-];
+  const byId = parse(order?.id);
+  const byOrderTime = parse(order?.orderTime) || byId;
+
+  if (mode === "done") {
+    const byDoneAt = parse(order?.doneAt);
+    const d = byDoneAt || byOrderTime;
+    return d
+      ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "-";
+  }
+
+  // mode === "order"
+  const d = byOrderTime;
+  return d
+    ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "-";
+};
 
 const OrderManage = () => {
-  // 상태 관리: 탭, 대기 목록, 완료 목록
-  const [activeTab, setActiveTab] = useState("active"); // 'active' | 'completed'
-  const [activeOrders, setActiveOrders] = useState(INITIAL_ACTIVE_ORDERS);
-  const [completedOrders, setCompletedOrders] = useState(
-    INITIAL_COMPLETED_ORDERS
-  );
+  const [activeTab, setActiveTab] = useState("active");
+  const [orders, setOrders] = useState([]);
 
-  // [핵심 로직] 주문 완료 처리 (삭제 X -> 이동 O)
+  // 주문 목록 로드
+  useEffect(() => {
+    const fetchOrders = () => {
+      const allOrders = getOrders() || [];
+      const sortedOrders = [...allOrders].sort((a, b) => b.id - a.id);
+      setOrders(sortedOrders);
+    };
+
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeOrders = orders.filter((o) => o.status === "접수대기");
+  const completedOrders = orders.filter((o) => o.status === "처리완료");
+
+  // ✅ 조리 완료 처리: status만 바꾸고 doneAt은 mockApi(updateOrder)가 자동 기록
   const handleComplete = (id) => {
-    if (window.confirm("조리를 완료 처리하시겠습니까?")) {
-      // 1. 해당 주문 찾기
-      const targetOrder = activeOrders.find((order) => order.id === id);
+    if (!window.confirm("조리를 완료 처리하시겠습니까?")) return;
 
-      // 2. 대기 목록에서 제거
-      setActiveOrders(activeOrders.filter((order) => order.id !== id));
+    const targetOrder = orders.find((o) => o.id === id);
+    if (!targetOrder) return;
 
-      // 3. 완료 목록 맨 앞에 추가
-      setCompletedOrders([targetOrder, ...completedOrders]);
-    }
+    const updated = {
+      ...targetOrder,
+      status: "처리완료",
+      // doneAt은 여기서 굳이 안 넣음 (updateOrder가 자동 처리)
+    };
+
+    const saved = updateOrder(updated); // ✅ updateOrder가 doneAt까지 확정해서 리턴
+
+    // 화면 즉시 반영
+    setOrders((prev) => prev.map((o) => (o.id === id ? saved : o)));
   };
 
   return (
     <div>
-      {/* 상단 제목 & 탭 버튼 */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-        <h2 className="text-2xl font-bold text-toss-dark">주문 관리</h2>
+        <h2 className="text-2xl font-bold text-toss-dark flex items-center gap-2">
+          주문 관리 <span className="text-lg">🔔</span>
+        </h2>
 
-        {/* 탭 버튼 그룹 */}
         <div className="bg-gray-100 p-1 rounded-xl inline-flex">
           <button
             onClick={() => setActiveTab("active")}
@@ -90,9 +98,7 @@ const OrderManage = () => {
         </div>
       </div>
 
-      {/* 탭 내용 표시 영역 */}
       {activeTab === "active" ? (
-        // [접수 대기 탭]
         activeOrders.length === 0 ? (
           <div className="h-[400px] flex flex-col justify-center items-center text-toss-light bg-white rounded-2xl border border-gray-100">
             <p className="text-xl">현재 대기 중인 주문이 없습니다.</p>
@@ -102,15 +108,19 @@ const OrderManage = () => {
             {activeOrders.map((order) => (
               <OrderCard
                 key={order.id}
-                order={order}
+                order={{
+                  ...order,
+                  tableNo: order.tableNumber,
+                  time: getTimeLabel(order, "order"), // ✅ 주문시간 표시
+                  totalPrice: order.totalAmount,
+                }}
                 onComplete={handleComplete}
                 isCompleted={false}
               />
             ))}
           </div>
         )
-      ) : // [처리 완료 탭]
-      completedOrders.length === 0 ? (
+      ) : completedOrders.length === 0 ? (
         <div className="h-[400px] flex flex-col justify-center items-center text-toss-light bg-white rounded-2xl border border-gray-100">
           <p className="text-xl">완료된 주문 기록이 없습니다.</p>
         </div>
@@ -119,9 +129,14 @@ const OrderManage = () => {
           {completedOrders.map((order) => (
             <OrderCard
               key={order.id}
-              order={order}
-              onComplete={() => {}} // 완료된 건은 기능 없음
-              isCompleted={true} // 회색 스타일 적용
+              order={{
+                ...order,
+                tableNo: order.tableNumber,
+                time: getTimeLabel(order, "done"), // ✅ 완료시간(doneAt) 우선 표시
+                totalPrice: order.totalAmount,
+              }}
+              onComplete={() => {}}
+              isCompleted={true}
             />
           ))}
         </div>

@@ -1,13 +1,65 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+// ✨ [추가] 가게 이름 저장 유틸 import
+import { setStoreName } from "../../utils/storeInfo";
+
+const STORAGE_KEY = "owners";
+const SESSION_KEY = "owner_session";
+
+const loadOwners = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 const OwnerLogin = () => {
   const navigate = useNavigate();
 
+  const [id, setId] = useState("");
+  const [pw, setPw] = useState("");
+  const [error, setError] = useState("");
+
   const handleLogin = (e) => {
     e.preventDefault();
-    // 나중에 실제 로그인 로직이 들어갈 곳
-    navigate("/owner/orders"); // 로그인 성공 시 주문관리 탭으로 이동
+    setError("");
+
+    const list = loadOwners();
+    const user = list.find((o) => o.id === id.trim());
+
+    if (!user) {
+      setError("존재하지 않는 아이디입니다.");
+      return;
+    }
+    if (user.password !== pw) {
+      setError("비밀번호가 올바르지 않습니다.");
+      return;
+    }
+    if (!user.approved) {
+      setError("관리자 승인 대기 중입니다. 승인 후 로그인할 수 있어요.");
+      return;
+    }
+
+    // ✅ 세션 저장 (기존 로직)
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({
+        id: user.id,
+        name: user.name,
+        approved: true,
+        loginAt: new Date().toISOString(),
+      })
+    );
+
+    // ✨ [핵심 추가] 로그인 성공 시, 이 사장님의 '학과'를 가게 이름으로 설정
+    if (user.department) {
+      setStoreName(user.department);
+    }
+
+    navigate("/owner/orders");
   };
 
   return (
@@ -18,9 +70,15 @@ const OwnerLogin = () => {
             사장님 로그인
           </h1>
           <p className="text-toss-light text-sm">
-            등록된 매장 계정으로 로그인해주세요
+            등록된 주점 계정으로 로그인해주세요
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-2xl bg-red-50 text-red-600 text-sm font-bold">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -29,6 +87,8 @@ const OwnerLogin = () => {
             </label>
             <input
               type="text"
+              value={id}
+              onChange={(e) => setId(e.target.value)}
               placeholder="admin"
               className="w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition"
             />
@@ -39,6 +99,8 @@ const OwnerLogin = () => {
             </label>
             <input
               type="password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
               placeholder="••••••••"
               className="w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition"
             />
@@ -48,6 +110,28 @@ const OwnerLogin = () => {
             로그인하기
           </button>
         </form>
+
+        <div className="mt-6">
+          <div className="flex items-center gap-3">
+            <div className="h-px bg-gray-100 flex-1" />
+            <span className="text-xs font-bold text-toss-light">
+              처음이신가요?
+            </span>
+            <div className="h-px bg-gray-100 flex-1" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/owner/signup")}
+            className="w-full mt-4 bg-white border border-gray-100 text-toss-dark py-4 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
+          >
+            주점 등록하기
+          </button>
+
+          <p className="text-center text-xs text-toss-light mt-3">
+            가입 후 관리자 승인 완료 시 로그인 가능합니다.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { formatPrice } from "../../utils/format";
 
 const SalesChart = ({ data, onDateClick, selectedDate }) => {
@@ -8,9 +8,21 @@ const SalesChart = ({ data, onDateClick, selectedDate }) => {
     return <div className="p-10 text-center">데이터가 없습니다.</div>;
   }
 
-  // 최대값 계산
-  const maxValue = Math.max(...data.map((d) => d.amount)) || 1;
+  // ✅ maxValue가 0이면 막대가 NaN 되는 문제 방지
+  const maxValue = useMemo(() => {
+    const m = Math.max(...data.map((d) => Number(d.amount) || 0));
+    return m > 0 ? m : 1;
+  }, [data]);
+
   const MAX_BAR_HEIGHT = 200;
+
+  // ✅ 라벨에서 "1/4"만 추출 (SalesManage에서 "1/4 (토)" 형태)
+  const displayDate = (d) => {
+    const label = String(d?.date ?? "");
+    // "1/4 (토)" → "1/4"
+    const beforeSpace = label.split(" ")[0];
+    return beforeSpace || label;
+  };
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -25,19 +37,20 @@ const SalesChart = ({ data, onDateClick, selectedDate }) => {
         }}
       >
         {data.map((day, index) => {
-          const barHeight = (day.amount / maxValue) * MAX_BAR_HEIGHT;
-          const isSelected = selectedDate === day.date; // 현재 선택된 날짜인가?
-          const isHovered = hoveredIndex === index; // 마우스가 올라가 있는가?
+          const amount = Number(day.amount) || 0;
+          const barHeight = (amount / maxValue) * MAX_BAR_HEIGHT;
 
-          // 색상 결정 로직 (우선순위: 선택됨 > 호버 > 기본)
-          let barColor = "#E8F3FF"; // 기본: 연한 파랑
-          if (isSelected) barColor = "#3182F6"; // 선택됨: 진한 파랑 (토스 블루)
-          else if (isHovered) barColor = "#3182F6"; // 호버: 진한 파랑
+          const keyDate = day.fullDate || day.date; // ✅ YYYY-MM-DD 우선
+          const isSelected = selectedDate === keyDate;
+          const isHovered = hoveredIndex === index;
+
+          let barColor = "#E8F3FF";
+          if (isSelected || isHovered) barColor = "#3182F6";
 
           return (
             <div
-              key={index}
-              onClick={() => onDateClick(day.date)}
+              key={keyDate}
+              onClick={() => onDateClick(keyDate)} // ✅ fullDate로 클릭 전달 유지
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
               style={{
@@ -46,36 +59,33 @@ const SalesChart = ({ data, onDateClick, selectedDate }) => {
                 flexDirection: "column",
                 justifyContent: "flex-end",
                 alignItems: "center",
-                cursor: "pointer", // 클릭 가능 표시
+                cursor: "pointer",
               }}
             >
-              {/* 금액 (호버하거나 선택됐을 때만 진하게 표시) */}
               <div
                 style={{
                   marginBottom: "6px",
                   fontSize: "12px",
                   fontWeight: "bold",
                   color: isSelected || isHovered ? "#3182F6" : "#999",
-                  opacity: isSelected || isHovered ? 1 : 0, // 평소엔 숨김(깔끔하게)
+                  opacity: isSelected || isHovered ? 1 : 0,
                   transition: "opacity 0.2s",
                 }}
               >
-                {formatPrice(day.amount)}
+                {formatPrice(amount)}
               </div>
 
-              {/* 막대 바 */}
               <div
                 style={{
-                  width: "30px", // 막대 두께
+                  width: "30px",
                   height: `${barHeight}px`,
                   backgroundColor: barColor,
                   borderRadius: "6px 6px 0 0",
-                  transition: "all 0.2s ease", // 부드러운 애니메이션
+                  transition: "all 0.2s ease",
                   minHeight: "6px",
                 }}
-              ></div>
+              />
 
-              {/* 날짜 */}
               <div
                 style={{
                   marginTop: "10px",
@@ -85,7 +95,7 @@ const SalesChart = ({ data, onDateClick, selectedDate }) => {
                   height: "20px",
                 }}
               >
-                {day.date.split(" ")[0]}
+                {displayDate(day)}
               </div>
             </div>
           );

@@ -11,16 +11,44 @@ body {
   color: #333d4b;
 }
 
-/* 스크롤바 숨기기 (깔끔한 UI 위해) */
-::-webkit-scrollbar {
-  display: none;
+@layer utilities {
+  /* 스크롤바 숨기기 (크롬, 사파리, 엣지) */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  /* 스크롤바 숨기기 (파이어폭스, IE) */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE, Edge */
+    scrollbar-width: none; /* Firefox */
+  }
 }
 
-/* 스크롤바 숨기기 (크롬, 사파리, 엣지) */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* --- 여기서부터 애니메이션 추가 --- */
+
+/* 모달이 아래에서 위로 부드럽게 올라오는 효과 */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE, Edge */
-  scrollbar-width: none; /* Firefox */
+.animate-slide-up {
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 배경이 서서히 어두워지는 효과 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
 }

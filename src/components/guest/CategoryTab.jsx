@@ -1,23 +1,22 @@
 import React from "react";
+// 상수는 MenuPage에서 넘겨받으므로 import 안 해도 됨 (이미 넘겨주고 있음)
 
 const CategoryTab = ({ categories, activeCategory, onSelect }) => {
   return (
-    <div className="sticky top-[70px] z-10 bg-white border-b border-toss-grey/50">
-      <div className="flex overflow-x-auto no-scrollbar px-4">
-        {categories.map((category) => (
-          <button
-            key={category}
-            onClick={() => onSelect(category)}
-            className={`mr-6 py-3 whitespace-nowrap text-[15px] transition-colors ${
-              activeCategory === category
-                ? "font-bold text-toss-dark border-b-2 border-toss-dark"
-                : "text-toss-light font-medium"
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
+    <div className="flex gap-2 overflow-x-auto p-4 no-scrollbar bg-white border-b sticky top-0 z-10">
+      {categories.map((cat) => (
+        <button
+          key={cat}
+          onClick={() => onSelect(cat)} // 여기서 onSelect를 실행해야 함
+          className={`px-5 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
+            activeCategory === cat
+              ? "bg-toss-blue text-white shadow-md"
+              : "bg-gray-100 text-toss-light"
+          }`}
+        >
+          {cat}
+        </button>
+      ))}
     </div>
   );
 };

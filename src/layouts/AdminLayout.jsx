@@ -1,24 +1,74 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { getOrders } from "../utils/mockApi";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 현재 접속한 곳이 관리자 페이지인지 확인 (/admin 으로 시작하면 관리자)
+  const prevCountRef = useRef(0);
+
+  // 현재 접속한 곳이 관리자 페이지인지 확인
   const isAdmin = location.pathname.startsWith("/admin");
 
-  // 메뉴 리스트 분기 (사장님용 vs 관리자용)
+  // 알림음 재생 함수
+  const playNotificationSound = () => {
+    const audio = new Audio("/sounds/dingdong.mp3?v=" + Date.now());
+    audio.play().catch(() => {
+      console.log("화면을 클릭해야 알림음이 재생됩니다.");
+    });
+  };
+
+  // 실시간 주문 감지 로직(사장님 페이지에서만)
+  useEffect(() => {
+    if (isAdmin) return;
+
+    const initialOrders = getOrders() || [];
+    prevCountRef.current = initialOrders.filter(
+      (o) => o.status === "접수대기"
+    ).length;
+
+    const checkNewOrders = () => {
+      const allOrders = getOrders() || [];
+      const currentActiveCount = allOrders.filter(
+        (o) => o.status === "접수대기"
+      ).length;
+
+      if (currentActiveCount > prevCountRef.current) {
+        playNotificationSound();
+      }
+      prevCountRef.current = currentActiveCount;
+    };
+
+    const interval = setInterval(checkNewOrders, 3000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
+
+  // 메뉴 리스트 분기
   const MENUS = isAdmin
     ? [
         { id: "approval", name: "가입 승인", path: "/admin/approval" },
         { id: "stores", name: "서비스 이용 목록", path: "/admin/stores" },
+        { id: "settings", name: "관리자 설정", path: "/admin/settings" },
       ]
     : [
         { id: "orders", name: "주문 관리", path: "/owner/orders" },
         { id: "menu", name: "메뉴 관리", path: "/owner/menu" },
         { id: "sales", name: "매출 관리", path: "/owner/sales" },
+        // ✅ 추가: 영업 관리 탭
+        { id: "business", name: "영업 관리", path: "/owner/business" },
       ];
+
+  // ✅ 로그아웃: 세션 삭제 + 이동
+  const handleLogout = () => {
+    if (isAdmin) {
+      localStorage.removeItem("admin_session");
+      navigate("/admin/login");
+    } else {
+      localStorage.removeItem("owner_session");
+      navigate("/owner/login");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-toss-grey flex">
@@ -50,7 +100,7 @@ const AdminLayout = () => {
 
         <div className="p-4 border-t border-gray-100">
           <button
-            onClick={() => navigate(isAdmin ? "/admin/login" : "/owner/login")}
+            onClick={handleLogout}
             className="w-full py-2 text-sm text-toss-light hover:text-toss-red transition-colors"
           >
             로그아웃
