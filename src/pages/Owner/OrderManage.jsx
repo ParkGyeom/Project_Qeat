@@ -45,23 +45,35 @@ const OrderManage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const activeOrders = orders.filter((o) => o.status === "접수대기");
+  const activeOrders = orders.filter(
+    (o) => o.status === "접수대기" || o.status === "조리중"
+  );
   const completedOrders = orders.filter((o) => o.status === "처리완료");
 
-  // ✅ 조리 완료 처리: status만 바꾸고 doneAt은 mockApi(updateOrder)가 자동 기록
-  const handleComplete = (id) => {
-    if (!window.confirm("조리를 완료 처리하시겠습니까?")) return;
-
+  // ✅ 상태 단계별 업데이트: 접수대기 -> 조리중 -> 처리완료
+  const handleStatusUpdate = (id) => {
     const targetOrder = orders.find((o) => o.id === id);
     if (!targetOrder) return;
 
-    const updated = {
-      ...targetOrder,
-      status: "처리완료",
-      // doneAt은 여기서 굳이 안 넣음 (updateOrder가 자동 처리)
-    };
+    let nextStatus = "";
+    let confirmMsg = "";
+    const updated = { ...targetOrder };
 
-    const saved = updateOrder(updated); // ✅ updateOrder가 doneAt까지 확정해서 리턴
+    if (targetOrder.status === "접수대기") {
+      nextStatus = "조리중";
+      confirmMsg = "입금을 확인하셨나요? 조리중 상태로 변경합니다.";
+      // ✅ 입금 확인 시점(조리 시작 시점) 기록
+      updated.confirmedAt = new Date().toISOString();
+    } else if (targetOrder.status === "조리중") {
+      nextStatus = "처리완료";
+      confirmMsg = "조리가 완료되었나요? 처리완료 상태로 이동합니다.";
+    }
+
+    if (!window.confirm(confirmMsg)) return;
+
+    updated.status = nextStatus;
+
+    const saved = updateOrder(updated);
 
     // 화면 즉시 반영
     setOrders((prev) => prev.map((o) => (o.id === id ? saved : o)));
@@ -114,7 +126,7 @@ const OrderManage = () => {
                   time: getTimeLabel(order, "order"), // ✅ 주문시간 표시
                   totalPrice: order.totalAmount,
                 }}
-                onComplete={handleComplete}
+                onStatusUpdate={handleStatusUpdate}
                 isCompleted={false}
               />
             ))}

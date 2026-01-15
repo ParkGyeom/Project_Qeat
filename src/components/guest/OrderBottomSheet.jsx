@@ -3,6 +3,7 @@ import useCartStore from "../../store/cartStore";
 import { formatPrice } from "../../utils/format";
 // 가짜 API
 import { createOrder } from "../../utils/mockApi";
+import { getBoothInfo } from "../../utils/storeInfo";
 
 const OrderBottomSheet = ({
   isOpen,
@@ -59,6 +60,8 @@ const OrderBottomSheet = ({
     }
   };
 
+  const boothInfo = getBoothInfo();
+
   if (!isOpen) return null;
 
   return (
@@ -68,7 +71,7 @@ const OrderBottomSheet = ({
         onClick={() => !submitting && onClose?.()}
       />
 
-      <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl p-6 shadow-2xl animate-slide-up">
+      <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl p-6 shadow-2xl animate-slide-up text-left">
         <h2 className="text-xl font-bold text-toss-dark mb-6">
           주문 내역 확인
         </h2>
@@ -114,17 +117,23 @@ const OrderBottomSheet = ({
         </div>
 
         <div className="bg-toss-grey p-4 rounded-xl mb-4">
-          <p className="text-sm text-toss-light mb-1">입금 계좌 (토스뱅크)</p>
+          <p className="text-sm text-toss-light mb-1">
+            입금 계좌 ({boothInfo.bank || "사장님 계좌"})
+          </p>
           <div className="flex justify-between items-center mb-2">
             <span className="font-bold text-toss-dark text-lg">
-              3333-XX-XXXXXX
+              {boothInfo.accountNumber || "정보 없음"}
             </span>
             <button
               onClick={() => {
-                navigator.clipboard.writeText("3333-XX-XXXXXX");
-                alert("계좌번호가 복사되었습니다.");
+                if (boothInfo.accountNumber) {
+                  navigator.clipboard.writeText(boothInfo.accountNumber);
+                  alert("계좌번호가 복사되었습니다.");
+                } else {
+                  alert("등록된 계좌번호가 없습니다.");
+                }
               }}
-              className="text-xs bg-white border border-gray-300 px-2 py-1 rounded text-toss-dark"
+              className="text-xs bg-white border border-gray-300 px-2 py-1 rounded text-toss-dark active:bg-gray-100 transition"
             >
               복사
             </button>

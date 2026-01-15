@@ -124,7 +124,7 @@ const BusinessManage = () => {
               : "px-4 py-2 rounded-xl font-bold text-sm text-white bg-toss-blue hover:bg-blue-600 transition shadow-sm"
           }
         >
-          {isClosed ? "영업 재개" : "오늘 영업 마감"}
+          {isClosed ? "영업 재개" : "영업 마감"}
         </button>
       </div>
 
@@ -364,7 +364,7 @@ const BusinessManage = () => {
               </div>
               <p style={{ fontSize: "12px", color: "#666" }}>
                 {currentStoreName} <br />
-                카메라로 스캔하여 주문해주세요 🍺
+                카메라로 스캔하여 주문해주세요🍺
               </p>
             </div>
           ))}

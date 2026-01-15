@@ -1,12 +1,23 @@
-const KEY_STORE_NAME = "qeat_store_name";
+const KEY_BOOTH_INFO = "qeat_booth_detail_v1";
 
-// ✅ 1. 가게 이름 저장하기 (이 함수가 지워져서 에러가 났던 겁니다)
-export const setStoreName = (name) => {
-  localStorage.setItem(KEY_STORE_NAME, name);
+// ✅ 1. 부스 상세 정보 저장하기 (이름, 은행, 계좌번호 전체 객체)
+export const setBoothInfo = (booth) => {
+  localStorage.setItem(KEY_BOOTH_INFO, JSON.stringify(booth));
 };
 
-// ✅ 2. 가게 이름 가져오기
+// ✅ 2. 부스 상세 정보 가져오기
+export const getBoothInfo = () => {
+  const raw = localStorage.getItem(KEY_BOOTH_INFO);
+  return raw ? JSON.parse(raw) : { name: "컴퓨터공학과", bank: "", accountNumber: "" };
+};
+
+// ✅ 3. 기존 코드 호환용: 가게 이름만 가져오기
 export const getStoreName = () => {
-  // 저장된 이름이 없으면 기본값 표시
-  return localStorage.getItem(KEY_STORE_NAME) || "컴퓨터공학과";
+  return getBoothInfo().name;
+};
+
+// ✅ 4. 기존 코드 호환용: 가게 이름만 저장하기 (필요시)
+export const setStoreName = (name) => {
+  const current = getBoothInfo();
+  setBoothInfo({ ...current, name });
 };

@@ -44,10 +44,33 @@ const AdminLayout = () => {
     return () => clearInterval(interval);
   }, [isAdmin]);
 
+  // ✅ 관리자용: 가입 승인 대기 건수 상태
+  const [pendingCount, setPendingCount] = React.useState(0);
+
+  // 실시간 승인 대기 건수 감지 (관리자 페이지에서만)
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const checkPendingOwners = () => {
+      try {
+        const raw = localStorage.getItem("owners");
+        const list = raw ? JSON.parse(raw) : [];
+        const count = list.filter((o) => !o.approved).length;
+        setPendingCount(count);
+      } catch (e) {
+        console.error("Failed to load owners for pending count", e);
+      }
+    };
+
+    checkPendingOwners();
+    const interval = setInterval(checkPendingOwners, 3000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
+
   // 메뉴 리스트 분기
   const MENUS = isAdmin
     ? [
-        { id: "approval", name: "가입 승인", path: "/admin/approval" },
+        { id: "approval", name: "가입 승인", path: "/admin/approval", count: pendingCount },
         { id: "stores", name: "서비스 이용 목록", path: "/admin/stores" },
         { id: "settings", name: "관리자 설정", path: "/admin/settings" },
       ]
@@ -87,13 +110,18 @@ const AdminLayout = () => {
             <button
               key={menu.id}
               onClick={() => navigate(menu.path)}
-              className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
+              className={`w-full text-left px-4 py-3 rounded-xl transition-colors flex items-center justify-between ${
                 location.pathname === menu.path
                   ? "bg-toss-lightBlue text-toss-blue font-bold"
                   : "text-toss-light hover:bg-gray-50"
               }`}
             >
-              {menu.name}
+              <span>{menu.name}</span>
+              {menu.count > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[1.2rem] h-[1.2rem] flex items-center justify-center">
+                  {menu.count > 99 ? "99+" : menu.count}
+                </span>
+              )}
             </button>
           ))}
         </div>

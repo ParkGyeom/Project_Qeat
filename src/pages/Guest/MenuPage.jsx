@@ -73,7 +73,7 @@ const MenuPage = () => {
     <div className="w-full h-full bg-toss-grey flex flex-col relative">
       <header className="px-5 pt-8 pb-4 bg-white sticky top-0 z-20 border-b border-toss-grey/50">
         <p className="text-base font-semibold text-gray-500 mb-0.5">
-          {storeName} 주점 🍺
+          {storeName}
         </p>
         <h1 className="text-3xl font-extrabold text-gray-900">
           테이블 {tableNumber}번

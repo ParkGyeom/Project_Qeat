@@ -168,6 +168,11 @@ const MenuManage = () => {
                       `${formatPrice(menu.price)}원`
                     )}
                   </p>
+                  {menu.description && (
+                    <p className="text-xs text-toss-light/70 mt-1 line-clamp-1 max-w-[300px]">
+                      {menu.description}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -203,6 +208,7 @@ const MenuManage = () => {
       {isModalOpen && (
         <MenuForm
           initialData={editingMenu}
+          defaultCategory={activeCategory === "전체" ? "메인" : activeCategory}
           onSubmit={handleSave}
           onCancel={() => setIsModalOpen(false)}
         />

@@ -13,6 +13,7 @@ import OrderManage from "./pages/Owner/OrderManage";
 import MenuManage from "./pages/Owner/MenuManage";
 import SalesManage from "./pages/Owner/SalesManage";
 import BusinessManage from "./pages/Owner/BusinessManage";
+import BoothSelect from "./pages/Owner/BoothSelect";
 
 import AdminLogin from "./pages/Admin/AdminLogin";
 import ApprovalManage from "./pages/Admin/ApprovalManage";
@@ -36,6 +37,8 @@ const App = () => {
 
       {/* 2-1. 사장님 보호 라우트 */}
       <Route element={<OwnerGuard />}>
+        <Route path="/owner/booth-select" element={<BoothSelect />} />
+        
         <Route element={<AdminLayout />}>
           <Route path="/owner/orders" element={<OrderManage />} />
           <Route path="/owner/menu" element={<MenuManage />} />

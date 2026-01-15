@@ -83,6 +83,12 @@ const MenuCard = ({ menu, isClosed = false, isClosingSoon = false }) => {
             )}
           </div>
 
+          {menu.description && (
+            <p className="text-[12px] text-toss-light/80 mb-2 line-clamp-2 break-all leading-relaxed transition-colors group-hover:text-toss-light">
+              {menu.description}
+            </p>
+          )}
+
           {!isStaffCall ? (
             <p
               className={`text-sm font-medium ${

@@ -30,16 +30,6 @@ const formatPhone = (raw) => {
   return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
 };
 
-const toAccountDigits = (raw) => onlyDigits(raw).slice(0, 20);
-
-const formatAccountDisplay = (digits) => {
-  const d = (digits || "").slice(0, 20);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
-  if (d.length <= 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
-  return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}-${d.slice(10)}`;
-};
-
 /* -----------------------------
   UI helpers
 ------------------------------ */
@@ -59,23 +49,6 @@ const FieldPill = ({ variant = "error", msg }) => {
 const baseInput =
   "w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition";
 
-const baseSelect =
-  "w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition appearance-none";
-
-const BANK_OPTIONS = [
-  "국민은행",
-  "신한은행",
-  "우리은행",
-  "하나은행",
-  "농협",
-  "기업은행",
-  "카카오뱅크",
-  "토스뱅크",
-  "새마을금고",
-  "우체국",
-  "기타(직접입력)",
-];
-
 const OwnerSignup = () => {
   const navigate = useNavigate();
 
@@ -87,10 +60,6 @@ const OwnerSignup = () => {
     studentId: "",
     department: "",
     phone: "",
-    bankSelect: "",
-    bankCustom: "",
-    accountDigits: "",
-    accountDisplay: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -123,16 +92,6 @@ const OwnerSignup = () => {
   const phoneDigits = onlyDigits(form.phone);
   const phoneOk = phoneDigits.length === 11;
 
-  const isBankCustom = form.bankSelect === "기타(직접입력)";
-  const bankValue = isBankCustom
-    ? form.bankCustom.trim()
-    : form.bankSelect.trim();
-  const bankOk = bankValue.length > 0;
-
-  const accountDigits = form.accountDigits;
-  const accountTouched = form.accountDisplay.length > 0;
-  const accountOk = accountDigits.length >= 8 && accountDigits.length <= 20;
-
   const canSubmit =
     form.name.trim() &&
     form.id.trim() &&
@@ -142,9 +101,7 @@ const OwnerSignup = () => {
     pwMatch === true &&
     form.studentId.trim() &&
     form.department.trim() &&
-    phoneOk &&
-    bankOk &&
-    accountOk;
+    phoneOk;
 
   const handleIdCheck = () => {
     const id = form.id.trim();
@@ -164,25 +121,6 @@ const OwnerSignup = () => {
     setIdChecked(true);
     setIdCheckResult(dup ? "dup" : "ok");
     setErrors((prev) => ({ ...prev, id: "" }));
-  };
-
-  const handleBankSelect = (value) => {
-    setField("bankSelect", value);
-    if (value !== "기타(직접입력)") {
-      setForm((prev) => ({ ...prev, bankCustom: "" }));
-      setErrors((prev) => ({ ...prev, bankCustom: "" }));
-    }
-  };
-
-  const handleAccountInput = (raw) => {
-    const digits = toAccountDigits(raw);
-    const display = formatAccountDisplay(digits);
-    setForm((prev) => ({
-      ...prev,
-      accountDigits: digits,
-      accountDisplay: display,
-    }));
-    setErrors((prev) => ({ ...prev, accountNumber: "" }));
   };
 
   const validateOnSubmit = () => {
@@ -209,14 +147,6 @@ const OwnerSignup = () => {
     if (!phoneDigits) e.phone = "전화번호를 입력해주세요.";
     else if (phoneDigits.length !== 11)
       e.phone = "전화번호 11자리를 입력해주세요.";
-
-    if (!form.bankSelect.trim()) e.bankSelect = "은행을 선택해주세요.";
-    if (isBankCustom && !form.bankCustom.trim())
-      e.bankCustom = "은행명을 직접 입력해주세요.";
-
-    if (!accountDigits) e.accountNumber = "계좌번호를 입력해주세요.";
-    else if (!accountOk)
-      e.accountNumber = "계좌번호는 숫자 8~20자리로 입력해주세요.";
 
     if (!idChecked || idCheckResult !== "ok") {
       e.id = e.id || "아이디 중복 확인을 해주세요.";
@@ -250,8 +180,6 @@ const OwnerSignup = () => {
       studentId: form.studentId.trim(),
       department: form.department.trim(),
       phone: formatPhone(form.phone),
-      bank: bankValue,
-      accountNumber: accountDigits,
       approved: false,
       createdAt: new Date().toISOString(),
     };
@@ -307,9 +235,7 @@ const OwnerSignup = () => {
                   if (form.studentId.trim()) score++;
                   if (form.department.trim()) score++;
                   if (phoneOk) score++;
-                  if (bankOk) score++;
-                  if (accountOk) score++;
-                  return Math.round((score / 9) * 100);
+                  return Math.round((score / 7) * 100);
                 })()}%`,
                 backgroundColor: "#3182F6",
               }}
@@ -524,85 +450,6 @@ const OwnerSignup = () => {
               />
             )}
             <FieldPill variant="error" msg={errors.phone} />
-          </div>
-
-          {/* 은행 선택 */}
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              은행
-            </label>
-            <div className="relative">
-              <select
-                value={form.bankSelect}
-                onChange={(e) => handleBankSelect(e.target.value)}
-                className={baseSelect}
-              >
-                <option value="" disabled>
-                  은행을 선택하세요
-                </option>
-                {BANK_OPTIONS.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
-                ▾
-              </div>
-            </div>
-
-            <FieldPill variant="error" msg={errors.bankSelect} />
-
-            {isBankCustom && (
-              <div className="mt-3">
-                <input
-                  type="text"
-                  value={form.bankCustom}
-                  onChange={(e) => setField("bankCustom", e.target.value)}
-                  placeholder="은행명을 직접 입력하세요"
-                  className={baseInput}
-                />
-                <FieldPill variant="error" msg={errors.bankCustom} />
-              </div>
-            )}
-
-            {(form.bankSelect || form.bankCustom) && (
-              <FieldPill
-                variant={bankOk ? "ok" : "warn"}
-                msg={
-                  bankOk
-                    ? "은행 정보가 입력되었습니다."
-                    : "은행 정보를 입력해주세요."
-                }
-              />
-            )}
-          </div>
-
-          {/* 계좌번호 */}
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              계좌번호
-            </label>
-            <input
-              type="text"
-              value={form.accountDisplay}
-              onChange={(e) => handleAccountInput(e.target.value)}
-              placeholder="숫자만 입력"
-              inputMode="numeric"
-              className={baseInput}
-            />
-
-            {accountTouched && (
-              <FieldPill
-                variant={accountOk ? "ok" : "warn"}
-                msg={
-                  accountOk
-                    ? "계좌번호 형식이 올바릅니다."
-                    : "계좌번호는 숫자 8~20자리로 입력해주세요."
-                }
-              />
-            )}
-            <FieldPill variant="error" msg={errors.accountNumber} />
           </div>
 
           {/* 제출 버튼 */}

@@ -54,12 +54,8 @@ const OwnerLogin = () => {
       })
     );
 
-    // ✨ [핵심 추가] 로그인 성공 시, 이 사장님의 '학과'를 가게 이름으로 설정
-    if (user.department) {
-      setStoreName(user.department);
-    }
-
-    navigate("/owner/orders");
+    // ✨ [수정] 로그인 성공 시, 부스 선택 화면으로 이동
+    navigate("/owner/booth-select");
   };
 
   return (
@@ -70,7 +66,7 @@ const OwnerLogin = () => {
             사장님 로그인
           </h1>
           <p className="text-toss-light text-sm">
-            등록된 주점 계정으로 로그인해주세요
+            등록된 계정으로 로그인해주세요
           </p>
         </div>
 
@@ -125,7 +121,7 @@ const OwnerLogin = () => {
             onClick={() => navigate("/owner/signup")}
             className="w-full mt-4 bg-white border border-gray-100 text-toss-dark py-4 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
           >
-            주점 등록하기
+          회원가입하기
           </button>
 
           <p className="text-center text-xs text-toss-light mt-3">

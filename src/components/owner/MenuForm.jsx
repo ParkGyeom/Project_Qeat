@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { MENU_CATEGORIES } from "../../constants/categories";
 
-const MenuForm = ({ initialData, onSubmit, onCancel }) => {
+const MenuForm = ({ initialData, defaultCategory, onSubmit, onCancel }) => {
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("메인");
+  const [category, setCategory] = useState(defaultCategory || "메인");
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
 
@@ -13,18 +14,26 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
   useEffect(() => {
     if (initialData) {
       setName(initialData.name);
+      setDescription(initialData.description || "");
       setPrice(initialData.price);
       setCategory(initialData.category);
       setImage(initialData.image);
       setPreview(initialData.image);
+    } else if (defaultCategory) {
+      // 새 메뉴 등록 시 현재 탭의 카테고리를 따름
+      setCategory(defaultCategory);
+      if (defaultCategory === "직원호출") {
+        setPrice(0);
+      }
     }
-  }, [initialData]);
+  }, [initialData, defaultCategory]);
 
   const handleCategoryChange = (e) => {
     const selectedCategory = e.target.value;
     setCategory(selectedCategory);
     if (selectedCategory === "직원호출") {
       setPrice(0); // 내부 데이터상으로는 0원으로 저장
+      setDescription(""); // 직원호출일 때 설명 필요없으면 초기화 (선택사항)
     }
   };
 
@@ -45,6 +54,7 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
     onSubmit({
       id: initialData ? initialData.id : Date.now(),
       name,
+      description,
       price: isStaffCall ? 0 : Number(price),
       category,
       image,
@@ -139,6 +149,20 @@ const MenuForm = ({ initialData, onSubmit, onCancel }) => {
               required
             />
           </div>
+
+          {!isStaffCall && (
+            <div>
+              <label className="block text-sm font-bold text-toss-dark mb-1">
+                메뉴 설명
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="메뉴에 대한 설명을 적어주세요"
+                className="w-full p-3 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 min-h-[80px] text-sm resize-none"
+              />
+            </div>
+          )}
 
           {/* 4. 가격 영역 (직원호출 시 텍스트로 변경) */}
           <div>
