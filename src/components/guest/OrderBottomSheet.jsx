@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import useCartStore from "../../store/cartStore";
 import { formatPrice } from "../../utils/format";
 // 가짜 API
@@ -12,6 +13,7 @@ const OrderBottomSheet = ({
   isClosed = false,
 }) => {
   const { cart, clearCart } = useCartStore();
+  const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
 
   const totalPrice = useMemo(() => {
@@ -40,13 +42,12 @@ const OrderBottomSheet = ({
       };
 
       // 2. LocalStorage 저장 (가짜 API)
-      // ✅ 영업 종료면 mockApi에서 BUSINESS_CLOSED 에러 던질 수 있으니 catch 필요
       createOrder(orderData);
 
       // 3. 후속 처리
-      alert("주문이 완료되었습니다! 사장님께 전달되었어요.");
       clearCart();
       onClose?.();
+      navigate(`/guest/order-complete?table=${tableNumber}`);
     } catch (e) {
       // ✅ 흰화면 방지 + 안내
       if (String(e?.message || "") === "BUSINESS_CLOSED") {

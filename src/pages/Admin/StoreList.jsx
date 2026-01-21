@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Modal from "../../components/common/Modal";
+import Button from "../../components/common/Button";
+import Input from "../../components/common/Input";
 
 const OWNERS_KEY = "owners";
 
@@ -7,6 +10,16 @@ const loadOwners = () => {
     const raw = localStorage.getItem(OWNERS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const BOOTHS_KEY = "owner_booths_v1";
+const loadOwnerBooths = (ownerId) => {
+  try {
+    const allBooths = JSON.parse(localStorage.getItem(BOOTHS_KEY) || "{}");
+    return allBooths[ownerId] || [];
   } catch {
     return [];
   }
@@ -107,12 +120,13 @@ const StoreList = () => {
           </p>
         </div>
 
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={refresh}
-          className="px-4 py-2 rounded-xl bg-white border border-gray-100 text-sm font-bold text-gray-700 hover:bg-gray-50 transition"
         >
           새로고침
-        </button>
+        </Button>
       </div>
 
       {/* 요약 카드 */}
@@ -138,17 +152,13 @@ const StoreList = () => {
       {/* 검색 */}
       <div className="bg-white p-5 rounded-[24px] shadow-sm border border-gray-50 mb-6">
         <div className="flex flex-col md:flex-row md:items-center gap-3">
-          <div className="flex-1">
-            <label className="block text-sm font-bold text-toss-dark mb-2">
-              검색 (이름 / 학과)
-            </label>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="이름 또는 학과로 검색"
-              className="w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition"
-            />
-          </div>
+          <Input
+            label="검색 (이름 / 학과)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="이름 또는 학과로 검색"
+            containerClassName="flex-1"
+          />
 
           {/* ✅ 검색어 있을 때만 표시 + 검색어 포함 문구 */}
           {hasQuery && (
@@ -183,7 +193,7 @@ const StoreList = () => {
                     학과
                   </th>
                   <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
-                    전화번호
+                    운영 부스
                   </th>
                   <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
                     관리
@@ -215,21 +225,22 @@ const StoreList = () => {
                       {o.department || "-"}
                     </td>
 
-                    <td className="p-5 align-middle text-center text-sm text-gray-700 font-medium">
-                      {o.phone || "-"}
+                    <td className="p-5 align-middle text-center text-sm text-toss-blue font-bold">
+                      {loadOwnerBooths(o.id).length}개
                     </td>
 
                     {/* ✅ 승인취소 버튼: 승인완료 뱃지랑 같은 느낌의 pill 스타일 */}
                     <td className="p-5 align-middle text-center">
-                      <button
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           revokeApproval(o.id);
                         }}
-                        className={pillRed}
                       >
                         승인취소
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -243,138 +254,79 @@ const StoreList = () => {
         </div>
       )}
 
-      {/* ✅ 상세 모달: 회원가입 입력 "모든 정보" 표시 / 승인취소 버튼은 제거 */}
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setSelected(null);
-          }}
-          style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-        >
-          <div className="w-full max-w-[560px] bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-            {/* 헤더 */}
-            <div className="p-6 border-b border-gray-100 flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-extrabold text-toss-dark">
-                    {selected.name || "-"}
-                  </h3>
-                  <span className={pillBlue}>승인 완료</span>
-                </div>
-                <p className="text-sm text-gray-500 font-bold mt-1">
-                  아이디: {selected.id}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setSelected(null)}
-                className="px-3 py-2 rounded-xl bg-gray-50 text-gray-700 font-bold hover:bg-gray-100 transition"
-              >
-                닫기
-              </button>
+      {/* ✅ 상세 모달: 공통 Modal 컴포넌트 적용 */}
+      <Modal
+        isOpen={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected && (
+          <div className="flex items-center gap-2">
+            <span>{selected.name || "-"}</span>
+            <span className={pillBlue}>승인 완료</span>
+          </div>
+        )}
+        footer={
+          <Button
+            fullWidth
+            size="lg"
+            onClick={() => setSelected(null)}
+          >
+            확인
+          </Button>
+        }
+      >
+        {selected && (
+          <div className="space-y-6">
+            <div className="text-sm text-gray-500 font-bold -mt-4 mb-4">
+              아이디: {selected.id}
             </div>
 
-            {/* 바디 */}
-            <div className="p-6 space-y-4">
-              {/* 기본 정보 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className="text-xs font-bold text-gray-500 mb-1">
-                    이름
-                  </div>
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {selected.name || "-"}
-                  </div>
+            {/* 기본 정보 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { label: '이름', value: selected.name },
+                { label: '아이디', value: selected.id },
+                { label: '학과', value: selected.department },
+                { label: '학번', value: selected.studentId },
+                { label: '가입일', value: formatDateTime(selected.createdAt) }
+              ].map((item, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                  <div className="text-xs font-bold text-gray-500 mb-1">{item.label}</div>
+                  <div className="text-sm font-extrabold text-gray-900">{item.value || "-"}</div>
                 </div>
-
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className="text-xs font-bold text-gray-500 mb-1">
-                    아이디
-                  </div>
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {selected.id || "-"}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className="text-xs font-bold text-gray-500 mb-1">
-                    학과
-                  </div>
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {selected.department || "-"}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className="text-xs font-bold text-gray-500 mb-1">
-                    학번
-                  </div>
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {selected.studentId || "-"}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className="text-xs font-bold text-gray-500 mb-1">
-                    전화번호
-                  </div>
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {selected.phone || "-"}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className="text-xs font-bold text-gray-500 mb-1">
-                    가입일
-                  </div>
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {formatDateTime(selected.createdAt)}
-                  </div>
-                </div>
-              </div>
-
-              {/* 정산 정보 */}
-              <div className="p-5 rounded-2xl bg-white border border-gray-100">
-                <div className="text-sm font-extrabold text-toss-dark mb-3">
-                  계좌 정보
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                    <div className="text-xs font-bold text-gray-500 mb-1">
-                      은행
-                    </div>
-                    <div className="text-sm font-extrabold text-gray-900">
-                      {selected.bank || "-"}
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                    <div className="text-xs font-bold text-gray-500 mb-1">
-                      계좌번호
-                    </div>
-                    <div className="text-sm font-extrabold text-gray-900">
-                      {prettyAccount(selected.accountNumber)}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* 푸터: ✅ 승인취소 제거, 확인만 */}
-            <div className="p-6 border-t border-gray-100">
-              <button
-                onClick={() => setSelected(null)}
-                className="w-full py-3 rounded-xl bg-toss-blue text-white font-extrabold hover:bg-blue-600 transition"
-              >
-                확인
-              </button>
+            {/* 운영 부스 및 정산 정보 */}
+            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm">
+              <div className="text-sm font-extrabold text-toss-dark mb-3">
+                운영 부스 목록 ({loadOwnerBooths(selected.id).length})
+              </div>
+              <div className="space-y-3">
+                {loadOwnerBooths(selected.id).length === 0 ? (
+                  <div className="text-center py-6 text-xs text-gray-400 font-bold bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    운영 중인 부스가 없습니다.
+                  </div>
+                ) : (
+                  loadOwnerBooths(selected.id).map((booth, idx) => (
+                    <div key={idx} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-bold text-toss-blue mb-0.5">부스명</p>
+                        <p className="text-sm font-extrabold text-toss-dark">{booth.name}</p>
+                      </div>
+                      <div className="sm:text-right">
+                        <p className="text-[10px] font-bold text-gray-400 mb-0.5">계좌 정보</p>
+                        <p className="text-xs font-bold text-gray-600">
+                          {booth.bank || "은행 미설정"} | {prettyAccount(booth.accountNumber)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };

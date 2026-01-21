@@ -7,6 +7,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import OwnerGuard from "./components/auth/OwnerGuard";
 
 import MenuPage from "./pages/Guest/MenuPage";
+import OrderComplete from "./pages/Guest/OrderComplete";
 import OwnerLogin from "./pages/Owner/OwnerLogin";
 import OwnerSignup from "./pages/Owner/OwnerSignup";
 import OrderManage from "./pages/Owner/OrderManage";
@@ -29,6 +30,7 @@ const App = () => {
         <Route path="/" element={<Navigate to="/guest/menu" replace />} />
 
         <Route path="/guest/menu" element={<MenuPage />} />
+        <Route path="/guest/order-complete" element={<OrderComplete />} />
       </Route>
 
       {/* 2. 사장님 (Login & Signup) */}

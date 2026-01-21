@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-// ✨ [추가] 가게 이름 저장 유틸 import
 import { setStoreName } from "../../utils/storeInfo";
+import Button from "../../components/common/Button";
+import Input from "../../components/common/Input";
 
 const STORAGE_KEY = "owners";
 const SESSION_KEY = "owner_session";
@@ -77,34 +78,23 @@ const OwnerLogin = () => {
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              아이디
-            </label>
-            <input
-              type="text"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              placeholder="admin"
-              className="w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              비밀번호
-            </label>
-            <input
-              type="password"
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-              placeholder="••••••••"
-              className="w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition"
-            />
-          </div>
+          <Input
+            label="아이디"
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            placeholder="admin"
+          />
+          <Input
+            label="비밀번호"
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder="••••••••"
+          />
 
-          <button className="w-full bg-toss-blue text-white py-4 rounded-xl font-bold text-lg mt-4 hover:bg-blue-600 transition">
+          <Button type="submit" fullWidth size="lg" className="mt-4">
             로그인하기
-          </button>
+          </Button>
         </form>
 
         <div className="mt-6">
@@ -116,13 +106,15 @@ const OwnerLogin = () => {
             <div className="h-px bg-gray-100 flex-1" />
           </div>
 
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            fullWidth
+            size="lg"
+            className="mt-4"
             onClick={() => navigate("/owner/signup")}
-            className="w-full mt-4 bg-white border border-gray-100 text-toss-dark py-4 rounded-xl font-bold text-lg hover:bg-gray-50 transition"
           >
-          회원가입하기
-          </button>
+            회원가입하기
+          </Button>
 
           <p className="text-center text-xs text-toss-light mt-3">
             가입 후 관리자 승인 완료 시 로그인 가능합니다.

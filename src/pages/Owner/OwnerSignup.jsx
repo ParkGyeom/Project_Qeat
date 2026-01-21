@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setStoreName } from "../../utils/storeInfo";
+import Button from "../../components/common/Button";
+import Input from "../../components/common/Input";
 
 const STORAGE_KEY = "owners";
 
@@ -30,9 +32,6 @@ const formatPhone = (raw) => {
   return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
 };
 
-/* -----------------------------
-  UI helpers
------------------------------- */
 const FieldPill = ({ variant = "error", msg }) => {
   if (!msg) return null;
   const base =
@@ -45,9 +44,6 @@ const FieldPill = ({ variant = "error", msg }) => {
       : "bg-red-50 text-red-600";
   return <div className={`${base} ${styles}`}>{msg}</div>;
 };
-
-const baseInput =
-  "w-full p-4 bg-toss-grey rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/50 transition";
 
 const OwnerSignup = () => {
   const navigate = useNavigate();
@@ -250,45 +246,34 @@ const OwnerSignup = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 이름 */}
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              이름
-            </label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setField("name", e.target.value)}
-              placeholder="홍길동"
-              className={baseInput}
-            />
-            <FieldPill variant="error" msg={errors.name} />
-          </div>
+          <Input
+            label="이름"
+            value={form.name}
+            onChange={(e) => setField("name", e.target.value)}
+            placeholder="홍길동"
+            error={errors.name}
+          />
 
-          {/* 아이디 + 중복확인 (영문, 숫자 제한 적용) */}
           <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              아이디
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
+            <div className="flex items-end gap-2">
+              <Input
+                label="아이디"
                 value={form.id}
                 onChange={(e) => {
-                  // ✅ 영문+숫자 이외의 문자(한글, 특수문자 등) 제거
                   const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
                   setField("id", val);
                 }}
                 placeholder="영문, 숫자 조합"
-                className={`flex-1 ${baseInput}`}
+                containerClassName="flex-1"
               />
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="md"
                 onClick={handleIdCheck}
-                className="px-4 rounded-xl font-bold text-sm bg-white border border-gray-100 hover:bg-gray-50 transition"
+                className="mb-[1px]"
               >
                 중복 확인
-              </button>
+              </Button>
             </div>
 
             {idChecked && idCheckResult === "ok" && (
@@ -300,171 +285,91 @@ const OwnerSignup = () => {
             <FieldPill variant="error" msg={errors.id} />
           </div>
 
-          {/* 비밀번호 (눈 모양 아이콘 추가) */}
           <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              비밀번호
-            </label>
             <div className="relative">
-              <input
-                // ✅ showPassword 상태에 따라 text/password 전환
+              <Input
+                label="비밀번호"
                 type={showPassword ? "text" : "password"}
                 value={form.password}
                 onChange={(e) => setField("password", e.target.value)}
                 placeholder="••••••••"
-                // ✅ pr-12: 오른쪽 아이콘 공간 확보
-                className={`${baseInput} pr-12`}
+                className="pr-12"
               />
-              {/* ✅ 눈 모양 토글 버튼 */}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 outline-none"
+                className="absolute right-4 top-[42px] text-gray-400 hover:text-gray-600 outline-none"
               >
                 {showPassword ? (
-                  // 눈 뜬 아이콘 (보임)
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 ) : (
-                  // 눈 감은 아이콘 (숨김)
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"
-                    />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                   </svg>
                 )}
               </button>
             </div>
-
             {pwTouched && (
-              <FieldPill
-                variant={pwMinOk ? "ok" : "warn"}
-                msg={
-                  pwMinOk
-                    ? "사용 가능한 비밀번호입니다."
-                    : "비밀번호는 4자리 이상이 좋아요."
-                }
-              />
+              <FieldPill variant={pwMinOk ? "ok" : "warn"} msg={pwMinOk ? "사용 가능한 비밀번호입니다." : "비밀번호는 4자리 이상이 좋아요."} />
             )}
             <FieldPill variant="error" msg={errors.password} />
           </div>
 
-          {/* 비밀번호 확인 */}
           <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              비밀번호 확인
-            </label>
-            <input
+            <Input
+              label="비밀번호 확인"
               type="password"
               value={form.passwordConfirm}
               onChange={(e) => setField("passwordConfirm", e.target.value)}
               placeholder="••••••••"
-              className={`${baseInput} ${pwConfirmRingClass}`}
+              error={errors.passwordConfirm}
+              className={pwMatch === true ? "ring-2 ring-blue-200" : pwMatch === false ? "ring-2 ring-red-200" : ""}
             />
             {pwConfirmTouched && pwTouched && pwMatch === true && (
               <FieldPill variant="ok" msg="비밀번호가 일치합니다." />
             )}
-            {pwConfirmTouched && pwTouched && pwMatch === false && (
-              <FieldPill variant="error" msg="비밀번호가 일치하지 않습니다." />
-            )}
-            <FieldPill variant="error" msg={errors.passwordConfirm} />
           </div>
 
-          {/* 학번 */}
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              학번
-            </label>
-            <input
-              type="text"
-              value={form.studentId}
-              onChange={(e) => setField("studentId", e.target.value)}
-              placeholder="20231234"
-              className={baseInput}
-            />
-            <FieldPill variant="error" msg={errors.studentId} />
-          </div>
+          <Input
+            label="학번"
+            value={form.studentId}
+            onChange={(e) => setField("studentId", e.target.value)}
+            placeholder="20231234"
+            error={errors.studentId}
+          />
 
-          {/* 학과 */}
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              학과
-            </label>
-            <input
-              type="text"
-              value={form.department}
-              onChange={(e) => setField("department", e.target.value)}
-              placeholder="컴퓨터공학과"
-              className={baseInput}
-            />
-            <FieldPill variant="error" msg={errors.department} />
-          </div>
+          <Input
+            label="학과"
+            value={form.department}
+            onChange={(e) => setField("department", e.target.value)}
+            placeholder="컴퓨터공학과"
+            error={errors.department}
+          />
 
-          {/* 전화번호 */}
-          <div>
-            <label className="block text-sm font-bold text-toss-dark mb-1">
-              전화번호
-            </label>
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => setField("phone", formatPhone(e.target.value))}
-              placeholder="010-1234-5678"
-              inputMode="numeric"
-              className={baseInput}
-            />
-            {form.phone.length > 0 && (
-              <FieldPill
-                variant={phoneOk ? "ok" : "warn"}
-                msg={
-                  phoneOk
-                    ? "전화번호 형식이 올바릅니다."
-                    : "전화번호 11자리를 입력해주세요."
-                }
-              />
-            )}
-            <FieldPill variant="error" msg={errors.phone} />
-          </div>
+          <Input
+            label="전화번호"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => setField("phone", formatPhone(e.target.value))}
+            placeholder="010-1234-5678"
+            inputMode="numeric"
+            helperText={form.phone.length > 0 && !phoneOk ? "전화번호 11자리를 입력해주세요." : phoneOk ? "전화번호 형식이 올바릅니다." : ""}
+            error={errors.phone}
+          />
 
-          {/* 제출 버튼 */}
-          <button
+          <Button
             type="submit"
+            fullWidth
+            size="lg"
+            variant="primary"
             disabled={!canSubmit}
-            className={[
-              "w-full py-4 rounded-xl font-bold text-lg mt-6 transition",
-              canSubmit
-                ? "bg-toss-blue text-white hover:bg-blue-600"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed",
-            ].join(" ")}
+            className="mt-6"
           >
             회원가입하기
-          </button>
+          </Button>
 
           {!canSubmit && (
             <div className="text-center text-xs font-bold text-gray-400">

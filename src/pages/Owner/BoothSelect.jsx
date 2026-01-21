@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { setBoothInfo } from "../../utils/storeInfo";
+import Button from "../../components/common/Button";
+import Input from "../../components/common/Input";
 
 const STORAGE_KEY = "owner_booths_v1";
 const SESSION_KEY = "owner_session";
@@ -165,33 +167,31 @@ const BoothSelect = () => {
             <h1 className="text-2xl font-bold text-toss-dark mb-2">부스 관리 센터</h1>
             <p className="text-toss-light text-sm">부스를 등록하거나 운영할 부스를 관리하세요</p>
           </div>
-          <button 
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={handleLogout}
-            className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-red-500 bg-gray-50 rounded-lg transition"
           >
             로그아웃
-          </button>
+          </Button>
         </div>
 
         {/* 메인 콘텐츠 영역 (가로 배치) */}
         <div className="flex flex-col lg:flex-row min-h-[500px]">
           {/* 왼쪽: 부스 추가 양식 */}
           <div className="w-full lg:w-[400px] p-8 lg:border-r border-gray-100 bg-gray-50/30">
-            <h2 className="text-sm font-bold text-toss-dark mb-6 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-toss-blue rounded-full"></span>
+            <h2 className="text-sm font-bold text-toss-dark mb-8 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-toss-blue rounded-full pulse-blue"></span>
               새 부스 등록
             </h2>
             <div className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-2 ml-1">부스 이름</label>
-                <input
-                  type="text"
-                  value={newBoothName}
-                  onChange={(e) => setNewBoothName(e.target.value)}
-                  placeholder="예: 컴퓨터공학과 주점"
-                  className="w-full p-4 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 transition shadow-sm"
-                />
-              </div>
+              <Input
+                label="부스 이름"
+                value={newBoothName}
+                onChange={(e) => setNewBoothName(e.target.value)}
+                placeholder="예: 컴퓨터공학과 주점"
+                className="bg-white shadow-sm"
+              />
               
               <div className="space-y-5">
                 <div className="relative">
@@ -234,40 +234,41 @@ const BoothSelect = () => {
                     </div>
                   )}
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-2 ml-1">계좌번호</label>
-                  <input
-                    type="text"
+                  <Input
+                    label="계좌번호"
                     value={newAccountNumber}
                     onChange={(e) => handleAccountChange(e.target.value)}
                     placeholder="숫자만 입력"
                     inputMode="numeric"
-                    className="w-full p-4 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 transition text-sm shadow-sm"
+                    className="bg-white shadow-sm"
                   />
                 </div>
               </div>
 
-              <button
+              <Button
+                fullWidth
+                size="lg"
                 onClick={handleAddBooth}
-                className="w-full py-4 bg-toss-blue text-white font-bold rounded-xl hover:bg-blue-600 shadow-md transition transform active:scale-[0.98] mt-4"
+                className="mt-4 shadow-md"
               >
                 부스 등록하기
-              </button>
+              </Button>
             </div>
-          </div>
 
           {/* 오른쪽: 부스 목록 */}
           <div className="flex-1 p-8 flex flex-col min-h-0 bg-white">
-            <h2 className="text-sm font-bold text-toss-dark mb-6 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-toss-dark mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                운영 중인 부스 <span className="text-toss-blue">{booths.length}</span>
+                운영 중인 부스 <span className="text-toss-blue ml-1">{booths.length}</span>
               </div>
-              <span className="text-[10px] text-toss-light font-normal hidden sm:block">부스를 클릭하면 대시보드로 이동합니다</span>
+              <span className="text-[11px] text-toss-light font-medium bg-gray-50 px-2 py-1 rounded-md">
+                부스를 클릭하면 대시보드로 이동합니다
+              </span>
             </h2>
             
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar lg:max-h-[500px]">
-              <div className="grid grid-cols-1 gap-4 pb-4">
+            <div className="flex-1 overflow-y-auto pr-2 pt-2 custom-scrollbar lg:max-h-[500px]">
+              <div className="grid grid-cols-1 gap-5 pb-8">
                 {booths.length === 0 ? (
                   <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
                     <p className="text-sm text-gray-400 font-medium">아직 등록된 부스가 없습니다.<br/>첫 번째 부스를 만들어보세요!</p>
@@ -285,29 +286,39 @@ const BoothSelect = () => {
                     >
                       {editingIndex === index ? (
                         <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
+                          <Input
                             value={editForm.name}
                             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                            className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 text-sm font-bold"
+                            className="bg-white font-bold"
                           />
                           <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="text"
+                            <Input
                               value={editForm.bank}
                               onChange={(e) => setEditForm({ ...editForm, bank: e.target.value })}
-                              className="p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 text-sm"
+                              className="bg-white"
                             />
-                            <input
-                              type="text"
+                            <Input
                               value={editForm.accountNumber}
                               onChange={(e) => handleAccountChange(e.target.value, true)}
-                              className="p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 text-sm"
+                              className="bg-white"
                             />
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={(e) => handleSaveEdit(index, e)} className="flex-1 py-2 bg-toss-blue text-white text-xs font-bold rounded-lg transition hover:bg-blue-600">저장</button>
-                            <button onClick={handleCancelEdit} className="flex-1 py-2 bg-gray-100 text-gray-500 text-xs font-bold rounded-lg transition hover:bg-gray-200">취소</button>
+                            <Button
+                              size="sm"
+                              fullWidth
+                              onClick={(e) => handleSaveEdit(index, e)}
+                            >
+                              저장
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              fullWidth
+                              onClick={handleCancelEdit}
+                            >
+                              취소
+                            </Button>
                           </div>
                         </div>
                       ) : (
