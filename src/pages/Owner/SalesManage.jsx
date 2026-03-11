@@ -733,7 +733,7 @@ const SalesManage = () => {
         </div>
       </div>
 
-      <div className="bg-white p-7 rounded-[24px] shadow-sm border border-gray-50 mb-8">
+      <div className="bg-white rounded-[24px] shadow-sm border border-gray-50 mb-8 overflow-hidden">
         <SalesChart
           data={chartData}
           selectedDate={selectedDate}

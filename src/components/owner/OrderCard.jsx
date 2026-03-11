@@ -1,7 +1,7 @@
 import React from "react";
 import { formatPrice } from "../../utils/format";
 
-const OrderCard = ({ order, onStatusUpdate, isCompleted }) => {
+const OrderCard = ({ order, onStatusUpdate, onCancel, isCompleted }) => {
   const [now, setNow] = React.useState(new Date());
 
   // ✅ 실시간 경과 시간 업데이트를 위한 타이머 (1분마다)
@@ -125,7 +125,22 @@ const OrderCard = ({ order, onStatusUpdate, isCompleted }) => {
         {/* [수정 포인트] 완료 여부에 따라 버튼 다르게 표시 */}
         {isCompleted ? (
           <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-xl font-bold text-center cursor-default">
-            처리 완료됨
+            {order.status === "주문취소" ? "주문 취소됨" : "처리 완료됨"}
+          </div>
+        ) : order.status === "접수대기" ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onCancel && onCancel(order.id)}
+              className="w-1/2 bg-red-50 text-red-500 hover:bg-red-100 py-3 rounded-xl font-bold text-lg transition"
+            >
+              주문 취소
+            </button>
+            <button
+              onClick={() => onStatusUpdate(order.id)}
+              className={`w-1/2 text-white py-3 rounded-xl font-bold text-lg transition shadow-lg ${statusInfo.buttonColor}`}
+            >
+              {statusInfo.buttonText}
+            </button>
           </div>
         ) : (
           <button

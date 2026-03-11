@@ -48,7 +48,21 @@ const OrderManage = () => {
   const activeOrders = orders.filter(
     (o) => o.status === "접수대기" || o.status === "조리중"
   );
-  const completedOrders = orders.filter((o) => o.status === "처리완료");
+  const completedOrders = orders.filter((o) => o.status === "처리완료" || o.status === "주문취소");
+
+  // ✅ 주문 취소 처리
+  const handleCancel = (id) => {
+    const targetOrder = orders.find((o) => o.id === id);
+    if (!targetOrder) return;
+
+    if (!window.confirm("고객의 주문을 취소하시겠습니까?")) return;
+
+    const updated = { ...targetOrder, status: "주문취소", doneAt: new Date().toISOString() };
+    const saved = updateOrder(updated);
+    
+    // 화면 즉시 반영
+    setOrders((prev) => prev.map((o) => (o.id === id ? saved : o)));
+  };
 
   // ✅ 상태 단계별 업데이트: 접수대기 -> 조리중 -> 처리완료
   const handleStatusUpdate = (id) => {
@@ -127,6 +141,7 @@ const OrderManage = () => {
                   totalPrice: order.totalAmount,
                 }}
                 onStatusUpdate={handleStatusUpdate}
+                onCancel={handleCancel}
                 isCompleted={false}
               />
             ))}

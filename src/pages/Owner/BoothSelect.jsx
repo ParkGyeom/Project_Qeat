@@ -326,7 +326,7 @@ const BoothSelect = () => {
                           <div className="flex items-center gap-4">
                             <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner">
                               <span className="text-toss-blue text-2xl">🏬</span>
-                            </div>
+                            </div> 
                             <div className="min-w-0">
                               <div className="font-bold text-toss-dark text-lg leading-tight mb-1 truncate">{booth.name}</div>
                               <div className="flex flex-wrap gap-2 text-[11px] font-bold">
