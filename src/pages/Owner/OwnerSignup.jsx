@@ -195,14 +195,35 @@ const OwnerSignup = () => {
       : "";
 
   return (
-    <div className="min-h-screen bg-toss-grey flex justify-center items-center p-4">
-      <div className="bg-white w-full max-w-[420px] p-8 rounded-3xl shadow-xl">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-toss-dark mb-2">
+    <div className="relative min-h-screen bg-[#F2F4F6] flex justify-center items-center p-4 py-12">
+      {/* 고정된 배경 컨테이너 (스크롤 시 고정 및 넘침 방지) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {/* 배경 장식 1: 은은한 블러 원 */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] max-w-[600px] max-h-[600px] bg-toss-blue/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] bg-blue-400/10 rounded-full blur-[100px]" />
+
+        {/* 배경 장식 2: 거대한 Qeat 워터마크 (아주 연하게) */}
+        <div className="absolute inset-0 flex items-center justify-center select-none opacity-[0.03]">
+          <span className="text-[25vw] font-black text-black tracking-tighter mix-blend-multiply">
+            Qeat
+          </span>
+        </div>
+      </div>
+
+      {/* 회원가입 박스 */}
+      <div className="relative z-10 bg-white/95 backdrop-blur-md w-full max-w-[480px] p-8 sm:p-10 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white/50 animate-fade-in my-auto">
+        <div className="text-center mb-10">
+          <div className="mx-auto flex justify-center items-center w-16 h-16 rounded-[20px] bg-blue-50 text-toss-blue mb-5 shadow-sm">
+            {/* 가입 약관/문서 펜선 아이콘 */}
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-extrabold text-toss-dark tracking-tight mb-2">
             사장님 회원가입
           </h1>
-          <p className="text-toss-light text-sm">
-            아래 정보를 입력해 계정을 생성해주세요
+          <p className="text-toss-light text-[15px] font-medium">
+            Qeat 입점을 위한 계정을 생성해주세요
           </p>
         </div>
 
@@ -360,16 +381,18 @@ const OwnerSignup = () => {
             error={errors.phone}
           />
 
-          <Button
-            type="submit"
-            fullWidth
-            size="lg"
-            variant="primary"
-            disabled={!canSubmit}
-            className="mt-6"
-          >
-            회원가입하기
-          </Button>
+          <div className="pt-6">
+            <Button
+              type="submit"
+              fullWidth
+              size="lg"
+              variant="primary"
+              disabled={!canSubmit}
+              className="rounded-xl font-bold text-[16px] h-[52px]"
+            >
+              회원가입하기
+            </Button>
+          </div>
 
           {!canSubmit && (
             <div className="text-center text-xs font-bold text-gray-400">

@@ -402,7 +402,6 @@ function TossDateRangePicker({
 ------------------------------ */
 
 const SALES_RANGE_KEY = "sales_range_v1";
-const SALES_BASE_KEY = "sales_base_v1";
 const SALES_CLOSINGS_KEY = "sales_closings_v1";
 
 const loadSavedRange = () => {
@@ -419,16 +418,6 @@ const saveRange = (startDate, endDate) => {
       SALES_RANGE_KEY,
       JSON.stringify({ startDate, endDate })
     );
-  } catch {}
-};
-
-const loadSalesBase = () => {
-  const v = localStorage.getItem(SALES_BASE_KEY);
-  return v === "order" ? "order" : "done";
-};
-const saveSalesBase = (v) => {
-  try {
-    localStorage.setItem(SALES_BASE_KEY, v);
   } catch {}
 };
 
@@ -449,18 +438,7 @@ const isCompletedStatus = (status) => {
 
 const kWeek = ["일", "월", "화", "수", "목", "금", "토"];
 
-const getTimeKeyByBase = (o, salesBase) => {
-  const tryIdAsTime = () => {
-    if (!o?.id) return null;
-    const d = new Date(o.id);
-    if (!isNaN(d.getTime())) return d.toISOString();
-    return null;
-  };
-
-  if (salesBase === "order") {
-    return o?.orderTime || tryIdAsTime();
-  }
-
+const getTimeKeyByDone = (o) => {
   // ✅ done 기준: doneAt이 없으면 "집계 제외"가 맞음
   return o?.doneAt || null;
 };
@@ -481,7 +459,6 @@ const SalesManage = () => {
   const [endDate, setEndDate] = useState(saved?.endDate || todayISO);
   const [selectedDate, setSelectedDate] = useState(null);
 
-  const [salesBase, setSalesBase] = useState(loadSalesBase); // "done" | "order"
   const [orders, setOrders] = useState([]);
 
   // closings는 "스냅샷/마감 정보"가 섞여 있을 수 있음
@@ -495,12 +472,8 @@ const SalesManage = () => {
     return () => clearInterval(t);
   }, []);
 
-  // ✅ 날짜 범위/토글 저장(탭 이동해도 유지)
+  // ✅ 날짜 범위 저장(탭 이동해도 유지)
   useEffect(() => saveRange(startDate, endDate), [startDate, endDate]);
-  useEffect(() => {
-    saveSalesBase(salesBase);
-    setSelectedDate(null);
-  }, [salesBase]);
 
   // ✅ 다른 탭(영업관리 등)에서 closings가 바뀌면 1초마다 반영
   useEffect(() => {
@@ -508,20 +481,17 @@ const SalesManage = () => {
     return () => clearInterval(t);
   }, []);
 
-  // ✅ 매출 기준에 따라 집계 대상 주문이 달라짐
-  // - order 기준: 전체 주문
-  // - done 기준: 처리완료 주문만
+  // ✅ 완료 기준: 처리완료 주문만 대상
   const baseOrders = useMemo(() => {
     const all = orders || [];
-    if (salesBase === "order") return all;
     return all.filter((o) => isCompletedStatus(o.status));
-  }, [orders, salesBase]);
+  }, [orders]);
 
   // 날짜 범위 안의 "완료 주문"만
   const rangedOrdersRaw = useMemo(() => {
     return baseOrders
       .map((o) => {
-        const t = getTimeKeyByBase(o, salesBase);
+        const t = getTimeKeyByDone(o);
         const d = t ? new Date(t) : null;
         if (!d || isNaN(d.getTime())) return null;
 
@@ -531,7 +501,7 @@ const SalesManage = () => {
         return { ...o, __dateISO: iso, __dateObj: d };
       })
       .filter(Boolean);
-  }, [baseOrders, startDate, endDate, salesBase]);
+  }, [baseOrders, startDate, endDate]);
 
   // ✅ 일자별 집계
   // - 기본: 실시간 집계
@@ -666,39 +636,11 @@ const SalesManage = () => {
             </h2>
           </div>
 
-          {/* ✅ 매출 기준 토글 */}
-          <div className="inline-flex bg-gray-100 p-1 rounded-xl w-fit">
-            <button
-              type="button"
-              onClick={() => setSalesBase("done")}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                salesBase === "done"
-                  ? "bg-white text-toss-blue shadow-sm"
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
-            >
-              완료 기준
-            </button>
-            <button
-              type="button"
-              onClick={() => setSalesBase("order")}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                salesBase === "order"
-                  ? "bg-white text-toss-blue shadow-sm"
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
-            >
-              주문 기준
-            </button>
-          </div>
-
-          <p className="text-xs text-toss-light">
-            {salesBase === "done"
-              ? "조리 완료(처리완료)된 시점 기준으로 매출을 집계합니다."
-              : "주문이 들어온 시점(orderTime) 기준으로 매출을 집계합니다."}
+          <p className="text-sm text-toss-light mt-1">
+            조리 완료(처리완료)된 시점 기준으로 매출을 집계합니다.
           </p>
 
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 mt-2">
             오늘({todayISO}) 현재 집계: {formatPrice(todayAgg.amount)}원 ·{" "}
             {todayAgg.count}건
           </p>
@@ -749,6 +691,9 @@ const SalesManage = () => {
                 selectedDate}
             </span>
             주문 내역
+            <span className="ml-2 text-sm text-toss-light font-medium">
+              (총 {dailyAgg.get(selectedDate)?.count || 0}건)
+            </span>
             {isSelectedDateFinalized ? (
               <span className="ml-3 px-2 py-1 rounded-lg bg-blue-50 text-toss-blue text-xs font-bold">
                 확정(스냅샷)
@@ -769,9 +714,6 @@ const SalesManage = () => {
                       <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">
                         시간
                       </th>
-                      <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        주문 내용
-                      </th>
                       <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
                         결제 금액
                       </th>
@@ -785,9 +727,6 @@ const SalesManage = () => {
                       >
                         <td className="p-5 text-sm text-toss-light font-medium">
                           {order.time}
-                        </td>
-                        <td className="p-5 text-sm text-toss-dark font-bold">
-                          {order.menu}
                         </td>
                         <td className="p-5 text-sm text-toss-blue font-bold text-right">
                           {formatPrice(order.price)}원
