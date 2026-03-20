@@ -195,223 +195,231 @@ const OwnerSignup = () => {
       : "";
 
   return (
-    <div className="relative min-h-screen bg-[#F2F4F6] flex justify-center items-center p-4 py-12">
-      {/* 고정된 배경 컨테이너 (스크롤 시 고정 및 넘침 방지) */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        {/* 배경 장식 1: 은은한 블러 원 */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] max-w-[600px] max-h-[600px] bg-toss-blue/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] bg-blue-400/10 rounded-full blur-[100px]" />
+    <div className="flex min-h-screen bg-gradient-to-r from-indigo-900 via-toss-blue to-[#F4F7FB] relative overflow-hidden">
+      {/* 자연스러운 톤 연결을 돕는 은은한 빛 번짐 효과 */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-500/40 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[20%] w-[30vw] h-[30vw] bg-[#F4F7FB]/60 rounded-full blur-[100px] pointer-events-none" />
 
-        {/* 배경 장식 2: 거대한 Qeat 워터마크 (아주 연하게) */}
-        <div className="absolute inset-0 flex items-center justify-center select-none opacity-[0.03]">
-          <span className="text-[25vw] font-black text-black tracking-tighter mix-blend-multiply">
-            Qeat
-          </span>
+      {/* Left Panel */}
+      <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center p-12 z-10">
+        <div className="relative w-full max-w-md">
+          <div className="mb-12">
+            <span className="text-4xl font-black tracking-tighter text-white">
+              Qeat <span className="text-blue-200">Business</span>
+            </span>
+          </div>
+          
+          <h1 className="text-[38px] leading-[1.3] font-extrabold text-white tracking-tight mb-6">
+            매출을 높이는 가장 확실한 방법,<br />
+            지금 입점하세요.
+          </h1>
+          <p className="text-[17px] text-blue-100/90 font-medium leading-relaxed">
+            몇 가지 정보만 입력하면<br />
+            주문부터 재고 관리까지 한 번에 해결됩니다.
+          </p>
         </div>
       </div>
 
-      {/* 회원가입 박스 */}
-      <div className="relative z-10 bg-white/95 backdrop-blur-md w-full max-w-[480px] p-8 sm:p-10 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white/50 animate-fade-in my-auto">
-        <div className="text-center mb-10">
-          <div className="mx-auto flex justify-center items-center w-16 h-16 rounded-[20px] bg-blue-50 text-toss-blue mb-5 shadow-sm">
-            {/* 가입 약관/문서 펜선 아이콘 */}
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-extrabold text-toss-dark tracking-tight mb-2">
-            사장님 회원가입
-          </h1>
-          <p className="text-toss-light text-[15px] font-medium">
-            Qeat 입점을 위한 계정을 생성해주세요
-          </p>
+      {/* Right Panel: Signup Form */}
+      <div className="w-full lg:w-[55%] flex items-center justify-center p-6 sm:p-12 relative z-10 overflow-y-auto">
+        <div className="absolute top-6 left-6 sm:top-8 sm:left-8 lg:hidden z-20">
+          <span className="text-2xl font-black tracking-tighter text-white drop-shadow-md">
+            Qeat <span className="text-blue-200 whitespace-nowrap">Business</span>
+          </span>
         </div>
 
-        {/* 상태 카드 */}
-        <div className="mb-5 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-extrabold text-gray-900">
-              입력 상태
-            </span>
-            <span className="text-xs font-bold text-gray-400">
-              {canSubmit ? "완료" : "진행 중"}
-            </span>
+        {/* 폼을 감싸는 화이트 글래스 카드 */}
+        <div className="w-full max-w-[480px] bg-white/95 backdrop-blur-2xl p-8 sm:p-10 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/60 my-auto pt-24 lg:pt-10 mb-10">
+          <div className="text-left mb-8">
+            <h2 className="text-[32px] font-extrabold text-toss-dark tracking-tight mb-2">
+              사장님 회원가입
+            </h2>
+            <p className="text-toss-light text-[15px] font-medium">
+              Qeat 입점을 위한 계정을 생성해주세요
+            </p>
           </div>
 
-          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-2 rounded-full transition-all"
-              style={{
-                width: `${(() => {
+          <div className="mb-8 p-5 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-100 animate-fade-in shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-extrabold text-gray-900">
+                가입 진행률
+              </span>
+              <span className="text-sm font-bold text-toss-blue">
+                {canSubmit ? "100%" : `${Math.round(((() => {
                   let score = 0;
                   if (form.name.trim()) score++;
-                  if (form.id.trim() && idChecked && idCheckResult === "ok")
-                    score++;
+                  if (form.id.trim() && idChecked && idCheckResult === "ok") score++;
                   if (pwMinOk) score++;
                   if (pwMatch === true) score++;
                   if (form.studentId.trim()) score++;
                   if (form.department.trim()) score++;
                   if (phoneOk) score++;
-                  return Math.round((score / 7) * 100);
-                })()}%`,
-                backgroundColor: "#3182F6",
-              }}
-            />
-          </div>
-
-          <div className="mt-2 text-xs font-bold text-gray-500">
-            {canSubmit
-              ? "모든 조건을 만족했어요. 회원가입을 진행할 수 있습니다."
-              : "필수 정보를 입력하고 중복 확인을 완료해주세요."}
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="이름"
-            value={form.name}
-            onChange={(e) => setField("name", e.target.value)}
-            placeholder="홍길동"
-            error={errors.name}
-          />
-
-          <div>
-            <div className="flex items-end gap-2">
-              <Input
-                label="아이디"
-                value={form.id}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
-                  setField("id", val);
+                  return (score / 7) * 100;
+                })()))}%`}
+              </span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-2 rounded-full transition-all duration-300"
+                style={{
+                  width: `${(() => {
+                    let score = 0;
+                    if (form.name.trim()) score++;
+                    if (form.id.trim() && idChecked && idCheckResult === "ok") score++;
+                    if (pwMinOk) score++;
+                    if (pwMatch === true) score++;
+                    if (form.studentId.trim()) score++;
+                    if (form.department.trim()) score++;
+                    if (phoneOk) score++;
+                    return Math.round((score / 7) * 100);
+                  })()}%`,
+                  backgroundColor: canSubmit ? "#3182F6" : "#60A5FA",
                 }}
-                placeholder="영문, 숫자 조합"
-                containerClassName="flex-1"
               />
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Input
+              label="이름"
+              value={form.name}
+              onChange={(e) => setField("name", e.target.value)}
+              placeholder="홍길동"
+              error={errors.name}
+            />
+
+            <div>
+              <div className="flex items-end gap-2">
+                <Input
+                  label="아이디"
+                  value={form.id}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
+                    setField("id", val);
+                  }}
+                  placeholder="영문, 숫자 조합"
+                  containerClassName="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={handleIdCheck}
+                  className="mb-[1px] h-[52px] px-6"
+                >
+                  중복 확인
+                </Button>
+              </div>
+              {idChecked && idCheckResult === "ok" && (
+                <FieldPill variant="ok" msg="사용 가능한 아이디입니다." />
+              )}
+              {idChecked && idCheckResult === "dup" && (
+                <FieldPill variant="error" msg="이미 사용 중인 아이디입니다." />
+              )}
+              <FieldPill variant="error" msg={errors.id} />
+            </div>
+
+            <div>
+              <div className="relative">
+                <Input
+                  label="비밀번호"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => setField("password", e.target.value)}
+                  placeholder="••••••••"
+                  className="pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-[42px] text-gray-400 hover:text-gray-600 outline-none"
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {pwTouched && (
+                <FieldPill variant={pwMinOk ? "ok" : "warn"} msg={pwMinOk ? "사용 가능한 비밀번호입니다." : "비밀번호는 4자리 이상이 좋아요."} />
+              )}
+              <FieldPill variant="error" msg={errors.password} />
+            </div>
+
+            <div>
+              <Input
+                label="비밀번호 확인"
+                type="password"
+                value={form.passwordConfirm}
+                onChange={(e) => setField("passwordConfirm", e.target.value)}
+                placeholder="••••••••"
+                error={errors.passwordConfirm}
+                className={pwMatch === true ? "ring-2 ring-blue-200" : pwMatch === false ? "ring-2 ring-red-200" : ""}
+              />
+              {pwConfirmTouched && pwTouched && pwMatch === true && (
+                <FieldPill variant="ok" msg="비밀번호가 일치합니다." />
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="학번"
+                value={form.studentId}
+                onChange={(e) => setField("studentId", e.target.value)}
+                placeholder="20231234"
+                error={errors.studentId}
+              />
+              <Input
+                label="학과"
+                value={form.department}
+                onChange={(e) => setField("department", e.target.value)}
+                placeholder="컴퓨터공학과"
+                error={errors.department}
+              />
+            </div>
+
+            <Input
+              label="전화번호"
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setField("phone", formatPhone(e.target.value))}
+              placeholder="010-1234-5678"
+              inputMode="numeric"
+              helperText={form.phone.length > 0 && !phoneOk ? "전화번호 11자리를 입력해주세요." : phoneOk ? "전화번호 형식이 올바릅니다." : ""}
+              error={errors.phone}
+            />
+
+            <div className="pt-6">
               <Button
-                variant="outline"
-                size="md"
-                onClick={handleIdCheck}
-                className="mb-[1px]"
+                type="submit"
+                fullWidth
+                size="lg"
+                variant="primary"
+                disabled={!canSubmit}
+                className="rounded-xl font-bold text-[16px] h-[56px] shadow-sm hover:shadow-md transition-shadow"
               >
-                중복 확인
+                회원가입 완료하기
               </Button>
             </div>
+          </form>
 
-            {idChecked && idCheckResult === "ok" && (
-              <FieldPill variant="ok" msg="사용 가능한 아이디입니다." />
-            )}
-            {idChecked && idCheckResult === "dup" && (
-              <FieldPill variant="error" msg="이미 사용 중인 아이디입니다." />
-            )}
-            <FieldPill variant="error" msg={errors.id} />
-          </div>
-
-          <div>
-            <div className="relative">
-              <Input
-                label="비밀번호"
-                type={showPassword ? "text" : "password"}
-                value={form.password}
-                onChange={(e) => setField("password", e.target.value)}
-                placeholder="••••••••"
-                className="pr-12"
-              />
+          <div className="mt-8 text-center">
+            <p className="text-[15px] text-toss-light">
+              이미 계정이 있으신가요?{" "}
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-[42px] text-gray-400 hover:text-gray-600 outline-none"
+                onClick={() => navigate("/owner/login")}
+                className="text-toss-blue font-bold hover:underline"
               >
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                  </svg>
-                )}
+                로그인하러 가기
               </button>
-            </div>
-            {pwTouched && (
-              <FieldPill variant={pwMinOk ? "ok" : "warn"} msg={pwMinOk ? "사용 가능한 비밀번호입니다." : "비밀번호는 4자리 이상이 좋아요."} />
-            )}
-            <FieldPill variant="error" msg={errors.password} />
+            </p>
           </div>
-
-          <div>
-            <Input
-              label="비밀번호 확인"
-              type="password"
-              value={form.passwordConfirm}
-              onChange={(e) => setField("passwordConfirm", e.target.value)}
-              placeholder="••••••••"
-              error={errors.passwordConfirm}
-              className={pwMatch === true ? "ring-2 ring-blue-200" : pwMatch === false ? "ring-2 ring-red-200" : ""}
-            />
-            {pwConfirmTouched && pwTouched && pwMatch === true && (
-              <FieldPill variant="ok" msg="비밀번호가 일치합니다." />
-            )}
-          </div>
-
-          <Input
-            label="학번"
-            value={form.studentId}
-            onChange={(e) => setField("studentId", e.target.value)}
-            placeholder="20231234"
-            error={errors.studentId}
-          />
-
-          <Input
-            label="학과"
-            value={form.department}
-            onChange={(e) => setField("department", e.target.value)}
-            placeholder="컴퓨터공학과"
-            error={errors.department}
-          />
-
-          <Input
-            label="전화번호"
-            type="tel"
-            value={form.phone}
-            onChange={(e) => setField("phone", formatPhone(e.target.value))}
-            placeholder="010-1234-5678"
-            inputMode="numeric"
-            helperText={form.phone.length > 0 && !phoneOk ? "전화번호 11자리를 입력해주세요." : phoneOk ? "전화번호 형식이 올바릅니다." : ""}
-            error={errors.phone}
-          />
-
-          <div className="pt-6">
-            <Button
-              type="submit"
-              fullWidth
-              size="lg"
-              variant="primary"
-              disabled={!canSubmit}
-              className="rounded-xl font-bold text-[16px] h-[52px]"
-            >
-              회원가입하기
-            </Button>
-          </div>
-
-          {!canSubmit && (
-            <div className="text-center text-xs font-bold text-gray-400">
-              모든 항목 입력 + 아이디 중복 확인 + 비밀번호 일치가 필요합니다.
-            </div>
-          )}
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-toss-light">
-            이미 계정이 있으신가요?{" "}
-            <button
-              type="button"
-              onClick={() => navigate("/owner/login")}
-              className="text-toss-blue font-bold hover:underline"
-            >
-              로그인
-            </button>
-          </p>
         </div>
       </div>
     </div>
