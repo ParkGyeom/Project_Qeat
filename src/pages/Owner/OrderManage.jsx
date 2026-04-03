@@ -48,7 +48,13 @@ const OrderManage = () => {
   const activeOrders = orders.filter(
     (o) => o.status === "접수대기" || o.status === "조리중"
   );
-  const completedOrders = orders.filter((o) => o.status === "처리완료" || o.status === "주문취소");
+  const completedOrders = orders
+    .filter((o) => o.status === "처리완료")
+    .sort((a, b) => {
+      const timeA = new Date(a.doneAt || a.orderTime || a.id).getTime();
+      const timeB = new Date(b.doneAt || b.orderTime || b.id).getTime();
+      return timeB - timeA; // 최신순 정렬
+    });
 
   // ✅ 주문 취소 처리
   const handleCancel = (id) => {
@@ -57,11 +63,23 @@ const OrderManage = () => {
 
     if (!window.confirm("고객의 주문을 취소하시겠습니까?")) return;
 
-    const updated = { ...targetOrder, status: "주문취소", doneAt: new Date().toISOString() };
-    const saved = updateOrder(updated);
+    // localStorage에서 완전히 삭제되도록 처리 (mockApi의 delete 로직 차용)
+    const key = `qeat_orders_${targetOrder.storeName || "기본"}`; // 실제 환경에 맞게 key 생성될 수 있으나 mockApi updateOrder 대신 삭제 처리
+    // 현재는 window 객체나 API를 통해 삭제 함수를 호출해야 하지만, mockApi에 별도 삭제 함수가 없으므로 state 제외 후 저장
+    const updatedOrders = orders.filter((o) => o.id !== id);
+    // 참고: mockApi 내부 구조상 로컬스토리지 키를 다시 구해야하지만, 여기서는 직접 저장소를 수정하거나 임시로 상태만 비웁니다.
+    // 안전하게 상태에서만 완전히 제거 처리 (다음에 로드될땐 서버/스토리지 로직에 따름)
     
-    // 화면 즉시 반영
-    setOrders((prev) => prev.map((o) => (o.id === id ? saved : o)));
+    // 이부분은 실제 백엔드 연동 전 임시 방편으로 localStorage도 같이 비워줍니다. (mockApi.js 참고)
+    try {
+       const orderKey = `qeat_orders_${localStorage.getItem("qeat_booth_detail_v1") ? JSON.parse(localStorage.getItem("qeat_booth_detail_v1")).name : ""}`;
+       if (orderKey.length > 13) {
+           localStorage.setItem(orderKey, JSON.stringify(updatedOrders));
+       }
+    } catch(e) {}
+
+    // 화면 즉시 반영 (아예 삭제)
+    setOrders(updatedOrders);
   };
 
   // ✅ 상태 단계별 업데이트: 접수대기 -> 조리중 -> 처리완료

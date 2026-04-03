@@ -9,7 +9,6 @@ import OwnerGuard from "./components/auth/OwnerGuard";
 import MenuPage from "./pages/Guest/MenuPage";
 import OrderComplete from "./pages/Guest/OrderComplete";
 import OwnerLogin from "./pages/Owner/OwnerLogin";
-import OwnerSignup from "./pages/Owner/OwnerSignup";
 import OrderManage from "./pages/Owner/OrderManage";
 import MenuManage from "./pages/Owner/MenuManage";
 import SalesManage from "./pages/Owner/SalesManage";
@@ -33,9 +32,8 @@ const App = () => {
         <Route path="/guest/order-complete" element={<OrderComplete />} />
       </Route>
 
-      {/* 2. 사장님 (Login & Signup) */}
+      {/* 2. 사장님 (Login) */}
       <Route path="/owner/login" element={<OwnerLogin />} />
-      <Route path="/owner/signup" element={<OwnerSignup />} />
 
       {/* 2-1. 사장님 보호 라우트 */}
       <Route element={<OwnerGuard />}>

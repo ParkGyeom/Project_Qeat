@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const Modal = ({
   isOpen,
@@ -9,6 +10,12 @@ const Modal = ({
   maxWidth = '560px',
   closeOnOverlay = true
 }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // 모달 오픈 시 본문 스크롤 방지
   useEffect(() => {
     if (isOpen) {
@@ -21,9 +28,9 @@ const Modal = ({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] transition-all duration-300"
       onMouseDown={(e) => {
@@ -84,7 +91,8 @@ const Modal = ({
           animation: modal-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 };
 

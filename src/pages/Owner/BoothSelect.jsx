@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { setBoothInfo } from "../../utils/storeInfo";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
+import Modal from "../../components/common/Modal";
 
 const STORAGE_KEY = "owner_booths_v1";
 const SESSION_KEY = "owner_session";
@@ -41,6 +42,7 @@ const BoothSelect = () => {
   const [newBankCustom, setNewBankCustom] = useState("");
   const [newAccountNumber, setNewAccountNumber] = useState("");
   const [ownerId, setOwnerId] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // 수정 관련 상태
   const [editingIndex, setEditingIndex] = useState(null);
@@ -96,6 +98,7 @@ const BoothSelect = () => {
     setNewBankSelect("");
     setNewBankCustom("");
     setNewAccountNumber("");
+    setIsAddModalOpen(false);
   };
 
   const handleAccountChange = (val, isEdit = false) => {
@@ -159,32 +162,74 @@ const BoothSelect = () => {
   };
 
   return (
-    <div className="min-h-screen bg-toss-grey flex justify-center items-center p-4 lg:p-8">
-      <div className="bg-white w-full max-w-[1000px] rounded-3xl shadow-xl overflow-hidden flex flex-col">
-        {/* 상단 헤더 */}
-        <div className="p-8 pb-4 flex justify-between items-start border-b border-gray-50">
-          <div>
-            <h1 className="text-2xl font-bold text-toss-dark mb-2">부스 관리 센터</h1>
-            <p className="text-toss-light text-sm">부스를 등록하거나 운영할 부스를 관리하세요</p>
+    <div className="flex min-h-screen bg-gradient-to-r from-indigo-900 via-toss-blue to-[#F4F7FB] relative overflow-hidden">
+      {/* 자연스러운 톤 연결을 돕는 은은한 빛 번짐 효과 */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-500/40 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[20%] w-[30vw] h-[30vw] bg-[#F4F7FB]/60 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* 배경 로고 (화면 전체 우측에 거대하게 배치) - 화이트 톤으로 필터 적용 */}
+      <img
+        src="/sejong_logo.svg"
+        alt="Sejong Logo"
+        className="absolute top-1/2 right-0 translate-x-[35%] -translate-y-1/2 w-[180vw] sm:w-[150vw] lg:w-[1400px] opacity-[0.15] pointer-events-none z-0 brightness-0 invert mix-blend-overlay"
+      />
+
+      {/* Left Panel: Branding & Visuals */}
+      <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center p-12 z-10">
+        <div className="relative w-full max-w-md">
+          <div className="mb-12">
+            <span className="text-4xl font-black tracking-tighter text-white">
+              Qeat <span className="text-blue-200">Business</span>
+            </span>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleLogout}
-          >
-            로그아웃
-          </Button>
+          
+          <h1 className="text-[38px] leading-[1.3] font-extrabold text-white tracking-tight mb-6">
+            어떤 부스를<br />운영하시나요?
+          </h1>
+          <p className="text-[17px] text-blue-100/90 font-medium leading-relaxed">
+            운영할 부스를 선택하거나 새 부스를 등록하여<br />
+            스마트한 관리를 시작하세요.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Panel */}
+      <div className="w-full lg:w-[55%] flex items-center justify-center p-6 sm:p-12 relative z-10 overflow-y-auto">
+        {/* Mobile Header Logo */}
+        <div className="absolute top-6 left-6 sm:top-8 sm:left-8 lg:hidden z-20">
+          <span className="text-2xl font-black tracking-tighter text-white drop-shadow-md">
+            Qeat <span className="text-blue-200 whitespace-nowrap">Business</span>
+          </span>
         </div>
 
-        {/* 메인 콘텐츠 영역 (가로 배치) */}
-        <div className="flex flex-col lg:flex-row min-h-[500px]">
-          {/* 왼쪽: 부스 추가 양식 */}
-          <div className="w-full lg:w-[400px] p-8 lg:border-r border-gray-100 bg-gray-50/30">
-            <h2 className="text-sm font-bold text-toss-dark mb-8 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-toss-blue rounded-full pulse-blue"></span>
-              새 부스 등록
-            </h2>
-            <div className="space-y-5">
+        {/* 화이트 글래스 카드 */}
+        <div className="w-full max-w-[600px] bg-white/95 backdrop-blur-2xl p-8 sm:p-10 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/60 relative z-10 flex flex-col min-h-[600px]">
+          
+          <div className="flex justify-between items-start mb-8 pt-10 lg:pt-0">
+            <div>
+              <h2 className="text-[32px] font-extrabold text-toss-dark tracking-tight mb-2">
+                부스 관리 센터
+              </h2>
+              <p className="text-toss-light text-[15px] font-medium">
+                운영할 부스를 선택해 주세요
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleLogout}
+              className="px-4 shadow-sm"
+            >
+              로그아웃
+            </Button>
+          </div>
+
+          <Modal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            title="새 부스 등록"
+          >
+            <div className="space-y-5 pt-2">
               <Input
                 label="부스 이름"
                 value={newBoothName}
@@ -243,31 +288,28 @@ const BoothSelect = () => {
                     className="bg-white shadow-sm"
                   />
                 </div>
-              </div>
 
               <Button
                 fullWidth
                 size="lg"
                 onClick={handleAddBooth}
-                className="mt-4 shadow-md"
+                className="mt-8 shadow-md"
               >
                 부스 등록하기
               </Button>
             </div>
+          </Modal>
 
-          {/* 오른쪽: 부스 목록 */}
-          <div className="flex-1 p-8 flex flex-col min-h-0 bg-white">
-            <h2 className="text-sm font-bold text-toss-dark mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+          {/* 메인: 부스 목록 */}
+          <div className="flex-1 flex flex-col min-h-0 relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-toss-dark">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                 운영 중인 부스 <span className="text-toss-blue ml-1">{booths.length}</span>
               </div>
-              <span className="text-[11px] text-toss-light font-medium bg-gray-50 px-2 py-1 rounded-md">
-                부스를 클릭하면 대시보드로 이동합니다
-              </span>
-            </h2>
+            </div>
             
-            <div className="flex-1 overflow-y-auto pr-2 pt-2 custom-scrollbar lg:max-h-[500px]">
+            <div className="flex-1 overflow-y-auto pr-2 pt-2 custom-scrollbar lg:max-h-[400px]">
               <div className="grid grid-cols-1 gap-5 pb-8">
                 {booths.length === 0 ? (
                   <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
@@ -365,15 +407,19 @@ const BoothSelect = () => {
                   ))
                 )}
               </div>
+              
+              {/* 새 부스 추가 버튼 */}
+              <div className="mt-8 flex justify-center pt-6 border-t border-gray-100">
+                <Button 
+                  size="lg" 
+                  className="w-full rounded-[16px] shadow-sm hover:shadow-md transition-transform hover:-translate-y-0.5 font-extrabold text-[16px] h-[58px]"
+                  onClick={() => setIsAddModalOpen(true)}
+                >
+                  + 새 부스 추가하기
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* 하단 안내 */}
-        <div className="bg-gray-50/50 p-4 border-t border-gray-50 text-center">
-          <p className="text-[11px] text-toss-light font-medium">
-            부스를 선택하시면 해당 부스의 실시간 관리 대시보드로 즉시 연결됩니다.
-          </p>
         </div>
       </div>
     </div>

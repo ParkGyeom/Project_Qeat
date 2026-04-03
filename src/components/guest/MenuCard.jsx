@@ -100,10 +100,10 @@ const MenuCard = ({ menu, isClosed = false, isClosingSoon = false }) => {
           ) : (
             <p
               className={`text-sm font-bold ${
-                isDisabled ? "text-gray-400" : "text-toss-blue"
+                isDisabled ? "text-gray-400" : "text-toss-light"
               }`}
             >
-              서비스
+              비결제 항목
             </p>
           )}
 

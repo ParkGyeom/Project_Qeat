@@ -32,7 +32,7 @@ const OwnerLogin = () => {
     const user = list.find((o) => o.id === id.trim());
 
     if (!user) {
-      setError("존재하지 않는 아이디입니다.");
+      setError("가입되지 않은 학번입니다.");
       return;
     }
     if (user.password !== pw) {
@@ -65,6 +65,13 @@ const OwnerLogin = () => {
       <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-500/40 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[20%] w-[30vw] h-[30vw] bg-[#F4F7FB]/60 rounded-full blur-[100px] pointer-events-none" />
 
+      {/* 배경 로고 (화면 전체 우측에 거대하게 배치) - 화이트 톤으로 필터 적용 */}
+      <img
+        src="/sejong_logo.svg"
+        alt="Sejong Logo"
+        className="absolute top-1/2 right-0 translate-x-[35%] -translate-y-1/2 w-[180vw] sm:w-[150vw] lg:w-[1400px] opacity-[0.15] pointer-events-none z-0 brightness-0 invert mix-blend-overlay"
+      />
+
       {/* Left Panel: Branding & Visuals (배경 투명화로 메인 그라데이션 투영) */}
       <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center p-12 z-10">
         <div className="relative w-full max-w-md">
@@ -76,7 +83,7 @@ const OwnerLogin = () => {
           </div>
           
           <h1 className="text-[38px] leading-[1.3] font-extrabold text-white tracking-tight mb-6">
-            스마트한 매장 관리의 시작,<br />
+            스마트한 축제 부스 관리의 시작,<br />
             Qeat과 함께하세요.
           </h1>
           <p className="text-[17px] text-blue-100/90 font-medium leading-relaxed">
@@ -96,7 +103,7 @@ const OwnerLogin = () => {
         </div>
 
         {/* 폼을 감싸는 화이트 글래스 카드 */}
-        <div className="w-full max-w-[400px] bg-white/95 backdrop-blur-2xl p-8 sm:p-10 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/60">
+        <div className="w-full max-w-[400px] bg-white/95 backdrop-blur-2xl p-8 sm:p-10 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/60 relative z-10">
           <div className="text-left mb-10 pt-10 lg:pt-0">
             <h2 className="text-[32px] font-extrabold text-toss-dark tracking-tight mb-2">
               사장님 로그인
@@ -114,10 +121,10 @@ const OwnerLogin = () => {
 
           <form onSubmit={handleLogin} className="space-y-5">
             <Input
-              label="아이디"
+              label="학번"
               value={id}
               onChange={(e) => setId(e.target.value)}
-              placeholder="owner"
+              placeholder="20231234"
             />
             <Input
               label="비밀번호"
@@ -139,30 +146,6 @@ const OwnerLogin = () => {
             </div>
           </form>
 
-          <div className="mt-8">
-            <div className="flex items-center gap-3">
-              <div className="h-px bg-gray-100 flex-1" />
-              <span className="text-[13px] font-bold text-toss-light">
-                처음이신가요?
-              </span>
-              <div className="h-px bg-gray-100 flex-1" />
-            </div>
-
-            <Button
-              variant="outline"
-              fullWidth
-              size="lg"
-              className="mt-5 rounded-xl font-bold text-[16px] h-[52px]"
-              onClick={() => navigate("/owner/signup")}
-            >
-              입점 신청하기
-            </Button>
-
-            <p className="text-center text-[13px] text-gray-400 mt-6 leading-relaxed">
-              가입 후 관리자 승인이 완료되면<br />
-              로그인할 수 있습니다.
-            </p>
-          </div>
         </div>
       </div>
     </div>

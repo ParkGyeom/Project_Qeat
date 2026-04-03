@@ -36,6 +36,13 @@ const AdminLogin = () => {
       <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-500/40 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[20%] w-[30vw] h-[30vw] bg-[#F4F7FB]/60 rounded-full blur-[100px] pointer-events-none" />
 
+      {/* 배경 로고 (화면 전체 우측에 거대하게 배치) - 화이트 톤으로 필터 적용 */}
+      <img
+        src="/sejong_logo.svg"
+        alt="Sejong Logo"
+        className="absolute top-1/2 right-0 translate-x-[35%] -translate-y-1/2 w-[180vw] sm:w-[150vw] lg:w-[1400px] opacity-[0.15] pointer-events-none z-0 brightness-0 invert mix-blend-overlay"
+      />
+
       {/* Left Panel: Branding & Visuals (배경 투명화로 메인 그라데이션 투영) */}
       <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center p-12 z-10">
         <div className="relative w-full max-w-md">
