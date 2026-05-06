@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import CategoryTab from "../../components/guest/CategoryTab";
 import MenuCard from "../../components/guest/MenuCard";
 import CartFloatingBar from "../../components/guest/CartFloatingBar";
@@ -15,7 +15,14 @@ import {
   ensureAutoCloseToday,
 } from "../../utils/businessStatus";
 
-import { getStoreName } from "../../utils/storeInfo";
+import { getPublicTableInfo } from "../../api/tableApi";
+
+const REVERSE_MENU_CATEGORY_MAP = {
+  "MAIN_FOOD": "메인",
+  "SIDE_FOOD": "사이드",
+  "DRINK": "음료",
+  "REQUEST": "직원호출"
+};
 
 const MenuPage = () => {
   const location = useLocation();
@@ -29,19 +36,42 @@ const MenuPage = () => {
   const [closingSoon, setClosingSoon] = useState(false);
   const [minLeft, setMinLeft] = useState(null);
 
-  const [storeName, setStoreNameState] = useState(getStoreName());
+  const [storeName, setStoreNameState] = useState("");
 
   // table 번호
+  const { tableToken } = useParams();
   const queryParams = new URLSearchParams(location.search);
-  const tableNumber = queryParams.get("table") || "1";
+  
+  // 추후 API를 통해 받아올 실제 테이블 번호 및 부스 정보
+  const [tableNumber, setTableNumber] = useState(queryParams.get("table") || "1");
+  const [boothId, setBoothId] = useState(null);
 
   // 메뉴 fetch
   useEffect(() => {
-    const fetchMenus = () => setMenus(getMenus() || []);
-    fetchMenus();
-    const interval = setInterval(fetchMenus, 3000);
+    const fetchInfo = async () => {
+      try {
+        if (!tableToken) return;
+        const data = await getPublicTableInfo(tableToken);
+        setBoothId(data.boothId);
+        setTableNumber(data.tableNumber);
+        setStoreNameState(data.boothName);
+        
+        const mapped = data.menus.map(m => ({
+          ...m,
+          image: m.imageUrl ? `${import.meta.env.VITE_API_BASE_URL || ''}${m.imageUrl}` : null,
+          category: REVERSE_MENU_CATEGORY_MAP[m.category] || m.category,
+          isSoldOut: m.soldOut, // UI 호환용
+        }));
+        setMenus(mapped);
+      } catch (err) {
+        console.error("Failed to load table info", err);
+      }
+    };
+    
+    fetchInfo();
+    const interval = setInterval(fetchInfo, 5000); // 5초마다 갱신
     return () => clearInterval(interval);
-  }, []);
+  }, [tableToken]);
 
   // ✅ 영업마감/마감임박 상태를 1초마다 갱신
   useEffect(() => {
@@ -131,6 +161,7 @@ const MenuPage = () => {
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         tableNumber={tableNumber}
+        tableToken={tableToken} // 주문 생성 API에 필요함
         isClosed={isClosed} // ✅ 핵심: 주문하기 버튼 차단용
       />
     </div>

@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import useCartStore from "../../store/cartStore";
 import { formatPrice } from "../../utils/format";
 // 가짜 API
-import { createOrder } from "../../utils/mockApi";
+import { createGuestOrder } from "../../api/orderApi";
 import { getBoothInfo } from "../../utils/storeInfo";
 
 const OrderBottomSheet = ({
   isOpen,
   onClose,
   tableNumber = "1",
+  tableToken,
   isClosed = false,
 }) => {
   const { cart, clearCart } = useCartStore();
@@ -23,7 +24,7 @@ const OrderBottomSheet = ({
   const canSubmit =
     !isClosed && !submitting && Array.isArray(cart) && cart.length > 0;
 
-  const handleOrderSubmit = () => {
+  const handleOrderSubmit = async () => {
     if (!Array.isArray(cart) || cart.length === 0) return;
 
     if (isClosed) {
@@ -31,18 +32,23 @@ const OrderBottomSheet = ({
       return;
     }
 
+    if (!tableToken) {
+      alert("유효하지 않은 QR 접근입니다.");
+      return;
+    }
+
     try {
       setSubmitting(true);
 
-      // 1. 주문 데이터 생성 (기존 UI/로직 유지 + tableNumber 연동)
-      const orderData = {
-        tableNumber: String(tableNumber), // ✅ URL에서 받은 테이블 번호 사용
-        items: cart, // ✅ 기존 유지
-        totalAmount: totalPrice,
+      // 백엔드 명세에 맞춰 변환 (수량 최소 1 이상 보장)
+      const orderRequest = {
+        items: cart.map(item => ({
+          menuId: item.id,
+          quantity: Math.max(1, item.count)
+        }))
       };
 
-      // 2. LocalStorage 저장 (가짜 API)
-      createOrder(orderData);
+      await createGuestOrder(tableToken, orderRequest);
 
       // 3. 후속 처리
       clearCart();
@@ -50,7 +56,7 @@ const OrderBottomSheet = ({
       navigate(`/guest/order-complete?table=${tableNumber}`);
     } catch (e) {
       // ✅ 흰화면 방지 + 안내
-      if (String(e?.message || "") === "BUSINESS_CLOSED") {
+      if (String(e?.response?.data?.message || "") === "BUSINESS_CLOSED") {
         alert("영업이 종료되어 주문이 불가능합니다.");
         return;
       }

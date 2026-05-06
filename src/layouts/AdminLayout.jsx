@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { getOrders } from "../utils/mockApi";
 import { getBoothInfo, setBoothInfo } from "../utils/storeInfo";
+import { getMyBooths } from "../api/boothApi";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -112,14 +113,16 @@ const AdminLayout = () => {
   useEffect(() => {
     if (isAdmin) return;
     
-    // 사장님 세션에서 ID 가져오기
-    const sessionRaw = localStorage.getItem("owner_session");
-    if (sessionRaw) {
-      const session = JSON.parse(sessionRaw);
-      const allBooths = JSON.parse(localStorage.getItem("owner_booths_v1") || "{}");
-      const list = allBooths[session.id] || [];
-      setMyBooths(list);
-    }
+    const fetchBooths = async () => {
+      try {
+        const list = await getMyBooths();
+        setMyBooths(list);
+      } catch (err) {
+        console.error("Failed to fetch booths in layout", err);
+      }
+    };
+    
+    fetchBooths();
     
     // 현재 부스 정보 동기화
     setCurrentBooth(getBoothInfo());

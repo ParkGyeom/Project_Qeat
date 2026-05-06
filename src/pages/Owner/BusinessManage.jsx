@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import QRCode from "react-qr-code";
 
 import {
   isBusinessClosedToday,
@@ -13,28 +12,38 @@ import {
   ensureAutoCloseToday,
 } from "../../utils/businessStatus";
 
-// ✅ [1] 가게 이름을 가져오기 위해 import 추가
-import { getStoreName } from "../../utils/storeInfo";
-
+import { getBoothInfo, getStoreName } from "../../utils/storeInfo";
+import { getTables, bulkCreateTables, deactivateTable, activateTable } from "../../api/tableApi";
 import TossTimePicker from "../../components/common/TossTimePicker.jsx";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const BusinessManage = () => {
   const [isClosed, setIsClosed] = useState(false);
-
-  // 처음부터 저장된 시간을 가져와서 시작 (타이머 의존 X)
   const [time, setTime] = useState(getCloseTimeToday() || "");
-
   const [savedTime, setSavedTime] = useState(null);
   const [closingSoon, setClosingSoon] = useState(false);
   const [minLeft, setMinLeft] = useState(null);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
 
-  // QR 코드 관련 State
-  const [tableCount, setTableCount] = useState(10);
-  const [baseUrl, setBaseUrl] = useState("");
+  // 테이블 관련 State
+  const [tables, setTables] = useState([]);
+  const [addCount, setAddCount] = useState("");
+  const [isAddingTable, setIsAddingTable] = useState(false);
 
-  // ✅ [2] 현재 로그인한 가게 이름 가져오기
+  const currentBooth = getBoothInfo();
   const currentStoreName = getStoreName();
+
+  // 테이블 목록 불러오기
+  const fetchTables = async () => {
+    if (!currentBooth?.boothId) return;
+    try {
+      const data = await getTables(currentBooth.boothId);
+      setTables(data);
+    } catch (err) {
+      console.error("Failed to fetch tables", err);
+    }
+  };
 
   useEffect(() => {
     const tick = () => {
@@ -50,10 +59,7 @@ const BusinessManage = () => {
     tick();
     const id = setInterval(tick, 1000);
 
-    // QR 코드용 주소 설정
-    setBaseUrl(
-      `${window.location.protocol}//${window.location.host}/guest/menu`
-    );
+    fetchTables();
 
     return () => clearInterval(id);
   }, []);
@@ -94,6 +100,46 @@ const BusinessManage = () => {
     setTime(newTime);
   };
 
+  const handleBulkAdd = async () => {
+    const count = Number(addCount);
+    if (!count || count < 1) {
+      alert("추가할 테이블 개수를 입력해주세요.");
+      return;
+    }
+    if (!currentBooth?.boothId) return;
+
+    setIsAddingTable(true);
+    try {
+      await bulkCreateTables(currentBooth.boothId, count);
+      setAddCount("");
+      await fetchTables();
+    } catch (err) {
+      alert(err.response?.data?.message || "테이블 추가에 실패했습니다.");
+    } finally {
+      setIsAddingTable(false);
+    }
+  };
+
+  const handleDeactivateTable = async (tableId) => {
+    if (!window.confirm("이 테이블을 비활성화하시겠습니까?")) return;
+    try {
+      await deactivateTable(currentBooth.boothId, tableId);
+      await fetchTables();
+    } catch (err) {
+      alert("비활성화에 실패했습니다.");
+    }
+  };
+
+  const handleActivateTable = async (tableId) => {
+    if (!window.confirm("이 테이블을 다시 활성화하시겠습니까?\nQR 코드는 기존 그대로 유지됩니다.")) return;
+    try {
+      await activateTable(currentBooth.boothId, tableId);
+      await fetchTables();
+    } catch (err) {
+      alert("활성화에 실패했습니다.");
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -108,6 +154,8 @@ const BusinessManage = () => {
       "0"
     )}`;
   };
+
+  const activeTables = tables.filter(t => t.active);
 
   return (
     <div className="pb-20 font-sans px-2">
@@ -210,76 +258,161 @@ const BusinessManage = () => {
         </p>
       </div>
 
-      {/* 4. 테이블 QR 코드 생성기 */}
-      <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-50">
+      {/* 4. 테이블 관리 (백엔드 연동) */}
+      <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-50 mb-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div>
             <h3 className="text-lg font-bold text-toss-dark flex items-center gap-2">
-              테이블 QR 코드 🖨️
+              테이블 관리 📋
             </h3>
             <p className="text-sm text-gray-400 mt-1">
-              테이블마다 다른 QR 코드를 생성합니다.
+              테이블 개수를 입력하면 자동으로 QR 코드가 생성됩니다.
             </p>
           </div>
-          <button
-            onClick={handlePrint}
-            className="px-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-lg flex items-center justify-center gap-2"
-          >
-            <span>인쇄하기</span>
-          </button>
-        </div>
-
-        {/* 설정 패널 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-2xl">
-          <div className="col-span-2">
-            <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">
-              주문 페이지 주소 (배포 주소)
-            </label>
-            <input
-              type="text"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-toss-blue"
-              placeholder="https://..."
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">
-              테이블 개수
-            </label>
+          <div className="flex items-center gap-2">
             <input
               type="number"
-              value={tableCount}
-              onChange={(e) => setTableCount(Number(e.target.value))}
+              value={addCount}
+              onChange={(e) => setAddCount(e.target.value)}
+              placeholder="추가할 개수"
               min="1"
-              max="100"
-              className="w-full p-3 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-toss-blue"
+              className="w-28 p-3 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-toss-blue"
             />
+            <button
+              onClick={handleBulkAdd}
+              disabled={isAddingTable}
+              className="px-5 py-3 bg-toss-blue text-white font-bold rounded-xl hover:bg-blue-600 transition shadow-sm disabled:opacity-50 whitespace-nowrap"
+            >
+              {isAddingTable ? "추가 중..." : "+ 테이블 추가"}
+            </button>
           </div>
         </div>
 
-        {/* 화면 미리보기 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[300px] overflow-y-auto p-2 border border-dashed border-gray-300 rounded-xl">
-          {Array.from({ length: tableCount }).map((_, i) => (
-            <div
-              key={i}
-              className="flex flex-col items-center p-4 bg-white border border-gray-100 rounded-xl shadow-sm"
-            >
-              <h4 className="font-bold text-toss-dark mb-2">Table {i + 1}</h4>
-              <div className="bg-white p-1">
-                {/* ✅ [3] 화면 미리보기 QR: store 파라미터 추가! */}
-                <QRCode
-                  value={`${baseUrl}?store=${encodeURIComponent(
-                    currentStoreName
-                  )}&table=${i + 1}`}
-                  size={80}
-                  level="M"
-                />
+        {/* 테이블 현황 요약 */}
+        {tables.length > 0 && (
+          <div className="flex items-center gap-3 mb-4 text-sm font-bold">
+            <span className="text-toss-dark">
+              전체 <span className="text-toss-blue">{tables.length}</span>개
+            </span>
+            <span className="text-green-600">
+              활성 {tables.filter(t => t.active).length}개
+            </span>
+            {tables.filter(t => !t.active).length > 0 && (
+              <span className="text-red-400">
+                비활성 {tables.filter(t => !t.active).length}개
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* 테이블 목록 */}
+        {tables.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+            <p className="text-sm text-gray-400 font-medium">
+              등록된 테이블이 없습니다.<br/>테이블을 추가해 주세요!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[420px] overflow-y-auto p-1">
+            {tables.map((table) => (
+              <div
+                key={table.id}
+                className={`flex flex-col items-center p-4 bg-white border rounded-2xl shadow-sm transition-all ${
+                  table.active
+                    ? "border-gray-100 hover:shadow-md hover:border-toss-blue/30"
+                    : "border-red-100 opacity-50"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-3 w-full justify-between">
+                  <h4 className="font-bold text-toss-dark text-base">
+                    {table.tableNumber}번 테이블
+                  </h4>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    table.active
+                      ? "bg-green-50 text-green-600"
+                      : "bg-red-50 text-red-500"
+                  }`}>
+                    {table.active ? "활성" : "비활성"}
+                  </span>
+                </div>
+
+                {/* QR 이미지: 백엔드에서 생성된 이미지 사용 */}
+                {table.qrImageUrl ? (
+                  <div className="bg-white p-1.5 rounded-lg border border-gray-100 mb-3">
+                    <img
+                      src={`${API_BASE_URL}${table.qrImageUrl}`}
+                      alt={`Table ${table.tableNumber} QR`}
+                      className="w-24 h-24 object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
+                    <span className="text-xs text-gray-400">QR 없음</span>
+                  </div>
+                )}
+
+                {/* 테이블 토큰 */}
+                <p className="text-[10px] text-gray-400 font-mono mb-3 truncate max-w-full">
+                  {table.tableToken || "—"}
+                </p>
+
+                {table.active ? (
+                  <button
+                    onClick={() => handleDeactivateTable(table.id)}
+                    className="w-full text-xs font-bold text-red-400 hover:text-red-600 hover:bg-red-50 py-1.5 rounded-lg transition"
+                  >
+                    비활성화
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleActivateTable(table.id)}
+                    className="w-full text-xs font-bold text-toss-blue hover:text-blue-600 hover:bg-blue-50 py-1.5 rounded-lg transition"
+                  >
+                    다시 활성화
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* 5. QR 인쇄 영역 */}
+      {activeTables.length > 0 && (
+        <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-50">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-toss-dark flex items-center gap-2">
+              QR 코드 인쇄 🖨️
+            </h3>
+            <button
+              onClick={handlePrint}
+              className="px-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-lg flex items-center justify-center gap-2"
+            >
+              <span>인쇄하기</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[300px] overflow-y-auto p-2 border border-dashed border-gray-300 rounded-xl">
+            {activeTables.map((table) => (
+              <div
+                key={table.id}
+                className="flex flex-col items-center p-4 bg-white border border-gray-100 rounded-xl shadow-sm"
+              >
+                <h4 className="font-bold text-toss-dark mb-2">
+                  {table.tableNumber}번 테이블
+                </h4>
+                {table.qrImageUrl && (
+                  <img
+                    src={`${API_BASE_URL}${table.qrImageUrl}`}
+                    alt={`Table ${table.tableNumber} QR`}
+                    className="w-20 h-20 object-contain"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <TossTimePicker
         isOpen={isTimePickerOpen}
@@ -322,7 +455,7 @@ const BusinessManage = () => {
         `}
       </style>
 
-      {/* ✅ [4] 인쇄 영역 수정 */}
+      {/* 인쇄 전용 영역 */}
       <div id="print-area" style={{ display: "none" }}>
         <h1
           style={{
@@ -335,8 +468,8 @@ const BusinessManage = () => {
           {currentStoreName} QR 코드
         </h1>
         <div className="print-grid">
-          {Array.from({ length: tableCount }).map((_, i) => (
-            <div key={i} className="print-item">
+          {activeTables.map((table) => (
+            <div key={table.id} className="print-item">
               <h2
                 style={{
                   fontSize: "28px",
@@ -344,7 +477,7 @@ const BusinessManage = () => {
                   marginBottom: "10px",
                 }}
               >
-                {i + 1}번 테이블
+                {table.tableNumber}번 테이블
               </h2>
               <div
                 style={{
@@ -353,14 +486,13 @@ const BusinessManage = () => {
                   marginBottom: "10px",
                 }}
               >
-                {/* 인쇄용 QR: store 파라미터 추가! */}
-                <QRCode
-                  value={`${baseUrl}?store=${encodeURIComponent(
-                    currentStoreName
-                  )}&table=${i + 1}`}
-                  size={150}
-                  level="H"
-                />
+                {table.qrImageUrl && (
+                  <img
+                    src={`${API_BASE_URL}${table.qrImageUrl}`}
+                    alt={`Table ${table.tableNumber} QR`}
+                    style={{ width: "150px", height: "150px" }}
+                  />
+                )}
               </div>
               <p style={{ fontSize: "12px", color: "#666" }}>
                 {currentStoreName} <br />

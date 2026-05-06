@@ -4,33 +4,39 @@ import { setBoothInfo } from "../../utils/storeInfo";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import Modal from "../../components/common/Modal";
+import { getMe, logoutApi } from "../../api/authApi";
+import { getMyBooths, createBooth, updateBooth, deleteBooth } from "../../api/boothApi";
 
-const STORAGE_KEY = "owner_booths_v1";
 const SESSION_KEY = "owner_session";
 
-const BANK_OPTIONS = [
-  "국민은행",
-  "신한은행",
-  "우리은행",
-  "하나은행",
-  "농협",
-  "기업은행",
-  "카카오뱅크",
-  "토스뱅크",
-  "기타(직접입력)",
-];
+const BANK_MAP = {
+  "국민은행": "KB",
+  "신한은행": "SHINHAN",
+  "우리은행": "WOORI",
+  "하나은행": "HANA",
+  "농협은행": "NH",
+  "기업은행": "IBK",
+  "카카오뱅크": "KAKAO",
+  "토스뱅크": "TOSS"
+};
+
+const REVERSE_BANK_MAP = {
+  "KB": "국민은행",
+  "SHINHAN": "신한은행",
+  "WOORI": "우리은행",
+  "HANA": "하나은행",
+  "NH": "농협은행",
+  "IBK": "기업은행",
+  "KAKAO": "카카오뱅크",
+  "TOSS": "토스뱅크"
+};
+
+const BANK_OPTIONS = Object.keys(BANK_MAP);
 
 /* -----------------------------
   Helpers
 ------------------------------ */
 const onlyDigits = (v) => (v || "").replace(/\D/g, "");
-const formatAccountDisplay = (digits) => {
-  const d = (digits || "").slice(0, 20);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
-  if (d.length <= 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
-  return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}-${d.slice(10)}`;
-};
 
 const BoothSelect = () => {
   const navigate = useNavigate();
@@ -46,79 +52,105 @@ const BoothSelect = () => {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", bank: "", accountNumber: "" });
 
-  useEffect(() => {
-    const sessionRaw = localStorage.getItem(SESSION_KEY);
-    if (!sessionRaw) {
-      navigate("/owner/login");
-      return;
+  const fetchBooths = async () => {
+    try {
+      const list = await getMyBooths();
+      console.log("Fetched Booths Data:", list); // 확인용 로그
+      setBooths(list);
+    } catch (err) {
+      console.error("Failed to fetch booths", err);
     }
-    const session = JSON.parse(sessionRaw);
-    setOwnerId(session.id);
-
-    // 부스 목록 로드
-    const allBooths = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    const list = allBooths[session.id] || [];
-    
-    // 데이터 구조 호환성 유지
-    const normalized = list.map(item => {
-      if (typeof item === "string") return { name: item, bank: "", accountNumber: "" };
-      return { bank: "", ...item };
-    });
-    setBooths(normalized);
-  }, [navigate]);
-
-  const saveBooths = (newList) => {
-    setBooths(newList);
-    const allBooths = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    allBooths[ownerId] = newList;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allBooths));
   };
 
-  const isBankCustom = newBankSelect === "기타(직접입력)";
-  const bankValue = isBankCustom ? newBankCustom.trim() : newBankSelect;
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const user = await getMe();
+        setOwnerId(user.id);
+        
+        // 세션 정보 최신화
+        localStorage.setItem(
+          SESSION_KEY,
+          JSON.stringify({
+            id: user.studentNumber || user.id,
+            name: user.name || "사용자",
+            role: user.role,
+            approved: true,
+            loginAt: new Date().toISOString(),
+          })
+        );
+        
+        await fetchBooths();
+      } catch (err) {
+        console.error("getMe error:", err);
+        alert("세션 확인 실패: " + (err.response?.data?.message || err.message));
+        navigate("/owner/login");
+      }
+    };
+    init();
+  }, [navigate]);
 
-  const handleAddBooth = () => {
+  const bankValue = newBankSelect;
+
+  const handleAddBooth = async () => {
     const name = newBoothName.trim();
     const bank = bankValue.trim();
-    const account = newAccountNumber.trim();
+    const account = newAccountNumber.replace(/-/g, "").trim(); // 하이픈 제거
     
     if (!name || !bank || !account) {
       alert("부스 이름, 은행, 계좌번호를 모두 입력해주세요.");
       return;
     }
-    if (booths.some(b => b.name === name)) {
-      alert("이미 존재하는 부스 이름입니다.");
-      return;
-    }
     
-    saveBooths([...booths, { name, bank, accountNumber: account, status: "pending" }]);
-    setNewBoothName("");
-    setNewBankSelect("");
-    setNewBankCustom("");
-    setNewAccountNumber("");
-    setIsAddModalOpen(false);
+    try {
+      await createBooth({
+        name,
+        bank: BANK_MAP[bank] || bank,
+        accountNumber: account,
+        description: "새로 등록된 부스입니다."
+      });
+      
+      setNewBoothName("");
+      setNewBankSelect("");
+      setNewBankCustom("");
+      setNewAccountNumber("");
+      setIsAddModalOpen(false);
+      
+      await fetchBooths();
+    } catch (err) {
+      alert(err.response?.data?.message || "부스 등록에 실패했습니다.");
+    }
   };
 
   const handleAccountChange = (val, isEdit = false) => {
     const digits = onlyDigits(val);
-    const formatted = formatAccountDisplay(digits);
     if (isEdit) {
-      setEditForm(prev => ({ ...prev, accountNumber: formatted }));
+      setEditForm(prev => ({ ...prev, accountNumber: digits }));
     } else {
-      setNewAccountNumber(formatted);
+      setNewAccountNumber(digits);
     }
   };
 
-  const handleDeleteBooth = (name, e) => {
+  const handleDeleteBooth = async (booth, e) => {
     e.stopPropagation();
-    if (!window.confirm(`'${name}' 부스를 삭제하시겠습니까? 관련 데이터가 모두 삭제될 수 있습니다.`)) return;
-    saveBooths(booths.filter((b) => b.name !== name));
+    if (!window.confirm(`'${booth.name}' 부스를 삭제하시겠습니까? 관련 데이터가 모두 삭제될 수 있습니다.`)) return;
+    
+    try {
+      await deleteBooth(booth.boothId);
+      await fetchBooths();
+    } catch (err) {
+      alert("삭제에 실패했습니다.");
+    }
   };
 
   const handleSelectBooth = (booth) => {
     if (editingIndex !== null) return; // 수정 중에는 선택 이동 방지
-    if (booth.status === "pending") {
+    if (booth.boothStatus === "PENDING" || booth.status === "pending") {
       alert("관리자 승인 대기 중인 부스입니다. 승인 완료 후 이용 가능합니다.");
+      return;
+    }
+    if (booth.boothStatus === "REJECTED" || booth.status === "rejected") {
+      alert("관리자에 의해 승인이 거절된 부스입니다.");
       return;
     }
     setBoothInfo(booth);
@@ -131,9 +163,9 @@ const BoothSelect = () => {
     setEditForm({ ...booth });
   };
 
-  const handleSaveEdit = (index, e) => {
+  const handleSaveEdit = async (index, e) => {
     e.stopPropagation();
-    const oldName = booths[index].name;
+    const targetBooth = booths[index];
     const newName = editForm.name.trim();
     
     if (!newName || !editForm.bank.trim() || !editForm.accountNumber.trim()) {
@@ -141,16 +173,18 @@ const BoothSelect = () => {
       return;
     }
 
-    // 이름이 바뀌었는데 이미 존재하는 이름인 경우 (자기 자신 제외)
-    if (oldName !== newName && booths.some((b, i) => i !== index && b.name === newName)) {
-      alert("이미 존재하는 부스 이름입니다.");
-      return;
+    try {
+      await updateBooth(targetBooth.boothId, {
+        name: newName,
+        bank: BANK_MAP[editForm.bank.trim()] || editForm.bank.trim(),
+        accountNumber: editForm.accountNumber.replace(/-/g, "").trim(), // 하이픈 제거
+        description: targetBooth.description || "수정된 부스입니다."
+      });
+      setEditingIndex(null);
+      await fetchBooths();
+    } catch (err) {
+      alert(err.response?.data?.message || "수정에 실패했습니다.");
     }
-
-    const newList = [...booths];
-    newList[index] = { ...editForm, name: newName };
-    saveBooths(newList);
-    setEditingIndex(null);
   };
 
   const handleCancelEdit = (e) => {
@@ -158,7 +192,12 @@ const BoothSelect = () => {
     setEditingIndex(null);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch (err) {
+      console.error(err);
+    }
     localStorage.removeItem(SESSION_KEY);
     navigate("/owner/login");
   };
@@ -249,43 +288,21 @@ const BoothSelect = () => {
               <div className="space-y-5">
                 <div className="relative">
                   <label className="block text-xs font-bold text-gray-400 mb-2 ml-1">은행</label>
-                  {!isBankCustom ? (
-                    <div className="relative">
-                      <select
-                        value={newBankSelect}
-                        onChange={(e) => setNewBankSelect(e.target.value)}
-                        className="w-full p-4 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 transition appearance-none text-sm shadow-sm"
-                      >
-                        <option value="" disabled>은행 선택</option>
-                        {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
+                  <div className="relative">
+                    <select
+                      value={newBankSelect}
+                      onChange={(e) => setNewBankSelect(e.target.value)}
+                      className="w-full p-4 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 transition appearance-none text-sm shadow-sm"
+                    >
+                      <option value="" disabled>은행 선택</option>
+                      {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
                     </div>
-                  ) : (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={newBankCustom}
-                        onChange={(e) => setNewBankCustom(e.target.value)}
-                        placeholder="은행명 직접 입력"
-                        autoFocus
-                        className="w-full p-4 bg-white border border-toss-blue/30 rounded-xl outline-none focus:ring-2 focus:ring-toss-blue/30 transition text-sm pr-12 shadow-sm"
-                      />
-                      <button
-                        onClick={() => {
-                          setNewBankSelect("");
-                          setNewBankCustom("");
-                        }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-toss-blue hover:text-blue-600 transition"
-                      >
-                        목록
-                      </button>
-                    </div>
-                  )}
+                  </div>
                 </div>
                   <Input
                     label="계좌번호"
@@ -342,11 +359,21 @@ const BoothSelect = () => {
                             className="bg-white font-bold"
                           />
                           <div className="grid grid-cols-2 gap-2">
-                            <Input
-                              value={editForm.bank}
-                              onChange={(e) => setEditForm({ ...editForm, bank: e.target.value })}
-                              className="bg-white"
-                            />
+                            <div className="relative">
+                              <select
+                                value={REVERSE_BANK_MAP[editForm.bank] || editForm.bank}
+                                onChange={(e) => setEditForm({ ...editForm, bank: e.target.value })}
+                                className="w-full p-3.5 bg-white border border-gray-100 rounded-xl outline-none text-sm shadow-sm appearance-none"
+                              >
+                                <option value="" disabled>은행 선택</option>
+                                {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                              </select>
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
                             <Input
                               value={editForm.accountNumber}
                               onChange={(e) => handleAccountChange(e.target.value, true)}
@@ -380,9 +407,13 @@ const BoothSelect = () => {
                             <div className="min-w-0">
                               <div className="font-bold text-toss-dark text-lg leading-tight mb-1 truncate">{booth.name}</div>
                               <div className="flex flex-wrap gap-2 text-[11px] font-bold">
-                                {booth.status === "pending" ? (
+                                {booth.boothStatus === "PENDING" || booth.status === "pending" ? (
                                   <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
                                     승인 대기 중
+                                  </span>
+                                ) : booth.boothStatus === "REJECTED" || booth.status === "rejected" ? (
+                                  <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
+                                    승인 거절됨
                                   </span>
                                 ) : (
                                   <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded-md">
@@ -390,7 +421,7 @@ const BoothSelect = () => {
                                   </span>
                                 )}
                                 <span className="text-toss-blue bg-blue-50 px-2 py-0.5 rounded-md">
-                                  {booth.bank || "은행미설정"}
+                                  {REVERSE_BANK_MAP[booth.bank] || booth.bank || "은행미설정"}
                                 </span>
                                 <span className="text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md truncate max-w-[150px]">
                                   {booth.accountNumber || "계좌미설정"}
@@ -409,7 +440,7 @@ const BoothSelect = () => {
                               </svg>
                             </button>
                             <button
-                              onClick={(e) => handleDeleteBooth(booth.name, e)}
+                              onClick={(e) => handleDeleteBooth(booth, e)}
                               className="p-2.5 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors"
                               title="삭제"
                             >

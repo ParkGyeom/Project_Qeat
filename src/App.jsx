@@ -29,6 +29,9 @@ const App = () => {
         <Route path="/" element={<Navigate to="/guest/menu" replace />} />
 
         <Route path="/guest/menu" element={<MenuPage />} />
+        {/* ✅ [추가] QR 접속 라우트 */}
+        <Route path="/qr/:tableToken" element={<MenuPage />} />
+        
         <Route path="/guest/order-complete" element={<OrderComplete />} />
       </Route>
 

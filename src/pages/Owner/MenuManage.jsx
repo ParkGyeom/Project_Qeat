@@ -2,7 +2,22 @@ import React, { useState, useEffect } from "react";
 import MenuForm from "../../components/owner/MenuForm";
 import { formatPrice } from "../../utils/format";
 import { MENU_CATEGORIES } from "../../constants/categories";
-import { getMenus, addMenu, deleteMenu, updateMenu } from "../../utils/mockApi";
+import { getBoothInfo } from "../../utils/storeInfo";
+import { getMenus, createMenu, updateMenu, deleteMenu, toggleSoldOut } from "../../api/menuApi";
+
+const MENU_CATEGORY_MAP = {
+  "메인": "MAIN_FOOD",
+  "사이드": "SIDE_FOOD",
+  "음료": "DRINK",
+  "직원호출": "REQUEST"
+};
+
+const REVERSE_MENU_CATEGORY_MAP = {
+  "MAIN_FOOD": "메인",
+  "SIDE_FOOD": "사이드",
+  "DRINK": "음료",
+  "REQUEST": "직원호출"
+};
 
 const MenuManage = () => {
   const [menus, setMenus] = useState([]);
@@ -10,11 +25,25 @@ const MenuManage = () => {
   const [editingMenu, setEditingMenu] = useState(null);
   const [activeCategory, setActiveCategory] = useState("전체");
 
+  const currentBooth = getBoothInfo();
   const categoryTabs = ["전체", ...MENU_CATEGORIES];
 
+  const fetchMenusData = async () => {
+    if (!currentBooth?.boothId) return;
+    try {
+      const data = await getMenus(currentBooth.boothId);
+      const mapped = data.map(m => ({
+        ...m,
+        category: REVERSE_MENU_CATEGORY_MAP[m.category] || m.category,
+      }));
+      setMenus(mapped);
+    } catch (err) {
+      console.error("Failed to fetch menus", err);
+    }
+  };
+
   useEffect(() => {
-    const loadedMenus = getMenus();
-    setMenus(loadedMenus);
+    fetchMenusData();
   }, []);
 
   // [추가] 카테고리 정렬 우선순위 정의
@@ -59,30 +88,47 @@ const MenuManage = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (menuData) => {
-    if (editingMenu) {
-      updateMenu(menuData);
-      setMenus(menus.map((m) => (m.id === menuData.id ? menuData : m)));
-    } else {
-      const newMenu = addMenu(menuData);
-      setMenus([...menus, newMenu]);
+  const handleSave = async (menuData) => {
+    if (!currentBooth?.boothId) return;
+
+    const formData = new FormData();
+    formData.append("name", menuData.name);
+    if (menuData.description) formData.append("description", menuData.description);
+    formData.append("price", menuData.price);
+    formData.append("category", MENU_CATEGORY_MAP[menuData.category] || "MAIN_FOOD");
+    if (menuData.image) formData.append("image", menuData.image);
+
+    try {
+      if (editingMenu) {
+        await updateMenu(currentBooth.boothId, menuData.id, formData);
+      } else {
+        await createMenu(currentBooth.boothId, formData);
+      }
+      setIsModalOpen(false);
+      fetchMenusData();
+    } catch (err) {
+      alert("메뉴 저장에 실패했습니다.");
     }
-    setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("정말 이 메뉴를 삭제하시겠습니까?")) {
-      deleteMenu(id);
-      setMenus(menus.filter((m) => m.id !== id));
+      try {
+        await deleteMenu(currentBooth?.boothId, id);
+        fetchMenusData();
+      } catch (err) {
+        alert("삭제에 실패했습니다.");
+      }
     }
   };
 
-  const toggleSoldOut = (id) => {
-    const targetMenu = menus.find((m) => m.id === id);
-    if (!targetMenu) return;
-    const updatedMenu = { ...targetMenu, isSoldOut: !targetMenu.isSoldOut };
-    updateMenu(updatedMenu);
-    setMenus(menus.map((m) => (m.id === id ? updatedMenu : m)));
+  const handleToggleSoldOut = async (id) => {
+    try {
+      await toggleSoldOut(currentBooth?.boothId, id);
+      fetchMenusData();
+    } catch (err) {
+      alert("품절 상태 변경에 실패했습니다.");
+    }
   };
 
   return (
@@ -126,13 +172,13 @@ const MenuManage = () => {
             >
               <div
                 className={`flex items-center gap-4 ${
-                  menu.isSoldOut ? "opacity-50 grayscale" : ""
+                  menu.soldOut ? "opacity-50 grayscale" : ""
                 }`}
               >
                 <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-none border border-gray-200">
-                  {menu.image ? (
+                  {menu.imageUrl ? (
                     <img
-                      src={menu.image}
+                      src={`${import.meta.env.VITE_API_BASE_URL || ''}${menu.imageUrl}`}
                       alt={menu.name}
                       className="w-full h-full object-cover"
                     />
@@ -155,7 +201,7 @@ const MenuManage = () => {
                     <h3 className="text-lg font-bold text-toss-dark">
                       {menu.name}
                     </h3>
-                    {menu.isSoldOut && (
+                    {menu.soldOut && (
                       <span className="text-xs font-bold text-red-500 border border-red-500 px-1 rounded">
                         품절됨
                       </span>
@@ -178,14 +224,14 @@ const MenuManage = () => {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => toggleSoldOut(menu.id)}
+                  onClick={() => handleToggleSoldOut(menu.id)}
                   className={`px-3 py-2 rounded-lg text-sm font-bold border transition ${
-                    menu.isSoldOut
+                    menu.soldOut
                       ? "bg-toss-dark text-white border-toss-dark"
                       : "bg-white text-toss-red border-toss-red hover:bg-red-50"
                   }`}
                 >
-                  {menu.isSoldOut ? "품절 해제" : "품절 처리"}
+                  {menu.soldOut ? "품절 해제" : "품절 처리"}
                 </button>
                 <button
                   onClick={() => openModal(menu)}

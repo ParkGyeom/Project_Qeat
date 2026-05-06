@@ -17,8 +17,8 @@ const MenuForm = ({ initialData, defaultCategory, onSubmit, onCancel }) => {
       setDescription(initialData.description || "");
       setPrice(initialData.price);
       setCategory(initialData.category);
-      setImage(initialData.image);
-      setPreview(initialData.image);
+      setImage(null); // 수정 시 새 이미지가 없으면 null
+      setPreview(initialData.imageUrl ? `${import.meta.env.VITE_API_BASE_URL || ''}${initialData.imageUrl}` : null);
     } else if (defaultCategory) {
       // 새 메뉴 등록 시 현재 탭의 카테고리를 따름
       setCategory(defaultCategory);
@@ -40,12 +40,8 @@ const MenuForm = ({ initialData, defaultCategory, onSubmit, onCancel }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result);
-        setPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+      setImage(file);
+      setPreview(URL.createObjectURL(file));
     }
   };
 
@@ -57,8 +53,8 @@ const MenuForm = ({ initialData, defaultCategory, onSubmit, onCancel }) => {
       description,
       price: isStaffCall ? 0 : Number(price),
       category,
-      image,
-      isSoldOut: initialData ? initialData.isSoldOut : false,
+      image, // 새 파일 객체 또는 null
+      soldOut: initialData ? initialData.soldOut : false,
     });
   };
 

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { setStoreName } from "../../utils/storeInfo";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
+import { loginApi } from "../../api/authApi";
 
 const STORAGE_KEY = "owners";
 const SESSION_KEY = "owner_session";
@@ -24,34 +25,35 @@ const OwnerLogin = () => {
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
 
-    const list = loadOwners();
-    const user = list.find((o) => o.id === id.trim());
+    try {
+      const response = await loginApi(id.trim(), pw);
+      console.log("Login Response:", response);
+      
+      // 쿠키 기반 인증이므로 토큰 저장은 생략합니다 (axios가 자동으로 쿠키 처리)
 
-    if (!user) {
-      setError("가입되지 않은 학번입니다.");
-      return;
-    }
-    if (user.password !== pw) {
-      setError("비밀번호가 올바르지 않습니다.");
-      return;
-    }
-    // ✅ 세션 저장 (기존 로직)
-    localStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({
-        id: user.id,
-        name: user.name,
-        approved: true,
-        loginAt: new Date().toISOString(),
-      })
-    );
+      // 백엔드 응답에 맞춰 세션 정보 저장
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({
+          id: response?.studentNumber || id.trim(),
+          name: response?.name || "사용자",
+          role: response?.role || "OWNER",
+          approved: true,
+          loginAt: new Date().toISOString(),
+        })
+      );
 
-    // ✨ [수정] 로그인 성공 시, 부스 선택 화면으로 이동
-    navigate("/owner/booth-select");
+      // 로그인 성공 시, 부스 선택 화면으로 이동
+      navigate("/owner/booth-select");
+    } catch (err) {
+      console.error(err);
+      const serverMessage = err.response?.data?.message;
+      setError(serverMessage || "로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.");
+    }
   };
 
   return (
