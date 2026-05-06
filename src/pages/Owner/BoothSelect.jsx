@@ -17,8 +17,6 @@ const BANK_OPTIONS = [
   "기업은행",
   "카카오뱅크",
   "토스뱅크",
-  "새마을금고",
-  "우체국",
   "기타(직접입력)",
 ];
 
@@ -93,7 +91,7 @@ const BoothSelect = () => {
       return;
     }
     
-    saveBooths([...booths, { name, bank, accountNumber: account }]);
+    saveBooths([...booths, { name, bank, accountNumber: account, status: "pending" }]);
     setNewBoothName("");
     setNewBankSelect("");
     setNewBankCustom("");
@@ -119,6 +117,10 @@ const BoothSelect = () => {
 
   const handleSelectBooth = (booth) => {
     if (editingIndex !== null) return; // 수정 중에는 선택 이동 방지
+    if (booth.status === "pending") {
+      alert("관리자 승인 대기 중인 부스입니다. 승인 완료 후 이용 가능합니다.");
+      return;
+    }
     setBoothInfo(booth);
     navigate("/owner/orders");
   };
@@ -230,6 +232,12 @@ const BoothSelect = () => {
             title="새 부스 등록"
           >
             <div className="space-y-5 pt-2">
+              {/* 관리자 승인 안내 멘트 */}
+              <div className="bg-blue-50/80 text-toss-blue text-sm font-bold px-4 py-3 rounded-xl border border-blue-100 flex items-start gap-2 animate-fade-in shadow-sm">
+                <span className="text-base leading-none mt-0.5">💡</span>
+                <p>새로 등록한 부스는 <span className="text-blue-600 font-extrabold">관리자 승인 후</span> 운영이 가능합니다.</p>
+              </div>
+
               <Input
                 label="부스 이름"
                 value={newBoothName}
@@ -305,7 +313,7 @@ const BoothSelect = () => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-sm font-bold text-toss-dark">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                운영 중인 부스 <span className="text-toss-blue ml-1">{booths.length}</span>
+                전체 부스 <span className="text-toss-blue ml-1">{booths.length}</span>
               </div>
             </div>
             
@@ -372,6 +380,15 @@ const BoothSelect = () => {
                             <div className="min-w-0">
                               <div className="font-bold text-toss-dark text-lg leading-tight mb-1 truncate">{booth.name}</div>
                               <div className="flex flex-wrap gap-2 text-[11px] font-bold">
+                                {booth.status === "pending" ? (
+                                  <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                                    승인 대기 중
+                                  </span>
+                                ) : (
+                                  <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded-md">
+                                    승인 완료
+                                  </span>
+                                )}
                                 <span className="text-toss-blue bg-blue-50 px-2 py-0.5 rounded-md">
                                   {booth.bank || "은행미설정"}
                                 </span>

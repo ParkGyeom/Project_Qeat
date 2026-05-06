@@ -39,11 +39,6 @@ const OwnerLogin = () => {
       setError("비밀번호가 올바르지 않습니다.");
       return;
     }
-    if (!user.approved) {
-      setError("관리자 승인 대기 중입니다. 승인 후 로그인할 수 있어요.");
-      return;
-    }
-
     // ✅ 세션 저장 (기존 로직)
     localStorage.setItem(
       SESSION_KEY,

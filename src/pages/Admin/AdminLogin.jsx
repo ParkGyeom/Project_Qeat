@@ -27,7 +27,7 @@ const AdminLogin = () => {
       JSON.stringify({ ok: true, loginAt: new Date().toISOString() })
     );
 
-    navigate("/admin/approval");
+    navigate("/admin/booth-approval");
   };
 
   return (

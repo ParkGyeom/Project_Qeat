@@ -57,33 +57,37 @@ const AdminLayout = () => {
     return () => clearInterval(interval);
   }, [isAdmin]);
 
-  // ✅ 관리자용: 가입 승인 대기 건수 상태
-  const [pendingCount, setPendingCount] = React.useState(0);
+  // ✅ 관리자용: 부스 승인 대기 건수 상태
+  const [pendingBoothCount, setPendingBoothCount] = React.useState(0);
 
   // 실시간 승인 대기 건수 감지 (관리자 페이지에서만)
   useEffect(() => {
     if (!isAdmin) return;
 
-    const checkPendingOwners = () => {
+    const checkPendingBooths = () => {
       try {
-        const raw = localStorage.getItem("owners");
-        const list = raw ? JSON.parse(raw) : [];
-        const count = list.filter((o) => !o.approved).length;
-        setPendingCount(count);
+        // ✅ 부스 대기 건수 체크
+        const rawBooths = localStorage.getItem("owner_booths_v1");
+        const allBooths = rawBooths ? JSON.parse(rawBooths) : {};
+        let boothCount = 0;
+        Object.values(allBooths).forEach((boothList) => {
+          boothCount += boothList.filter((b) => b.status === "pending").length;
+        });
+        setPendingBoothCount(boothCount);
       } catch (e) {
         console.error("Failed to load owners for pending count", e);
       }
     };
 
-    checkPendingOwners();
-    const interval = setInterval(checkPendingOwners, 3000);
+    checkPendingBooths();
+    const interval = setInterval(checkPendingBooths, 3000);
     return () => clearInterval(interval);
   }, [isAdmin]);
 
   // 메뉴 리스트 분기
   const MENUS = isAdmin
     ? [
-        { id: "approval", name: "가입 승인", path: "/admin/approval", count: pendingCount },
+        { id: "boothApproval", name: "부스 가입 승인", path: "/admin/booth-approval", count: pendingBoothCount },
         { id: "stores", name: "서비스 이용 목록", path: "/admin/stores" },
         { id: "settings", name: "관리자 설정", path: "/admin/settings" },
       ]

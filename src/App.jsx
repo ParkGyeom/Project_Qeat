@@ -16,7 +16,7 @@ import BusinessManage from "./pages/Owner/BusinessManage";
 import BoothSelect from "./pages/Owner/BoothSelect";
 
 import AdminLogin from "./pages/Admin/AdminLogin";
-import ApprovalManage from "./pages/Admin/ApprovalManage";
+import BoothApprovalManage from "./pages/Admin/BoothApprovalManage";
 import StoreList from "./pages/Admin/StoreList";
 import AdminPinManage from "./pages/Admin/AdminPinManage";
 
@@ -50,7 +50,7 @@ const App = () => {
       {/* 3. 관리자 */}
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminLayout />}>
-        <Route path="/admin/approval" element={<ApprovalManage />} />
+        <Route path="/admin/booth-approval" element={<BoothApprovalManage />} />
         <Route path="/admin/stores" element={<StoreList />} />
         <Route path="/admin/settings" element={<AdminPinManage />} />
       </Route>
