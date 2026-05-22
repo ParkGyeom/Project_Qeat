@@ -7,9 +7,10 @@ const OrderComplete = () => {
   const location = useLocation();
   const storeName = getStoreName();
 
-  // URL 쿼리에서 테이블 번호 가져오기
+  // URL 쿼리에서 테이블 번호 및 토큰 가져오기
   const queryParams = new URLSearchParams(location.search);
   const tableNumber = queryParams.get("table") || "1";
+  const tableToken = queryParams.get("token") || "";
 
   // 페이지 진입 시 상단으로 스크롤
   useEffect(() => {
@@ -64,7 +65,13 @@ const OrderComplete = () => {
         </p>
         
         <button
-          onClick={() => navigate(`/guest/menu?table=${tableNumber}`)}
+          onClick={() => {
+            if (tableToken) {
+              navigate(`/qr/${tableToken}?table=${tableNumber}`);
+            } else {
+              navigate(`/guest/menu?table=${tableNumber}`);
+            }
+          }}
           className="w-full py-4 bg-toss-blue text-white font-bold rounded-2xl text-lg hover:bg-blue-600 transition-all shadow-lg active:scale-[0.98]"
         >
           메뉴 보러가기

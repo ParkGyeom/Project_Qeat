@@ -56,7 +56,9 @@ const BoothSelect = () => {
     try {
       const list = await getMyBooths();
       console.log("Fetched Booths Data:", list); // 확인용 로그
-      setBooths(list);
+      // 삭제된 부스는 화면에 표시하지 않음
+      const activeBooths = list.filter(b => b.boothStatus !== "DELETED" && b.status !== "deleted");
+      setBooths(activeBooths);
     } catch (err) {
       console.error("Failed to fetch booths", err);
     }
@@ -131,17 +133,7 @@ const BoothSelect = () => {
     }
   };
 
-  const handleDeleteBooth = async (booth, e) => {
-    e.stopPropagation();
-    if (!window.confirm(`'${booth.name}' 부스를 삭제하시겠습니까? 관련 데이터가 모두 삭제될 수 있습니다.`)) return;
-    
-    try {
-      await deleteBooth(booth.boothId);
-      await fetchBooths();
-    } catch (err) {
-      alert("삭제에 실패했습니다.");
-    }
-  };
+
 
   const handleSelectBooth = (booth) => {
     if (editingIndex !== null) return; // 수정 중에는 선택 이동 방지
@@ -151,6 +143,10 @@ const BoothSelect = () => {
     }
     if (booth.boothStatus === "REJECTED" || booth.status === "rejected") {
       alert("관리자에 의해 승인이 거절된 부스입니다.");
+      return;
+    }
+    if (booth.boothStatus === "SUSPENDED") {
+      alert("관리자에 의해 운영이 중지된 부스입니다.\n문의사항은 관리자에게 연락해주세요.");
       return;
     }
     setBoothInfo(booth);
@@ -174,7 +170,7 @@ const BoothSelect = () => {
     }
 
     try {
-      await updateBooth(targetBooth.boothId, {
+      await updateBooth(targetBooth.boothId || targetBooth.id, {
         name: newName,
         bank: BANK_MAP[editForm.bank.trim()] || editForm.bank.trim(),
         accountNumber: editForm.accountNumber.replace(/-/g, "").trim(), // 하이픈 제거
@@ -190,6 +186,19 @@ const BoothSelect = () => {
   const handleCancelEdit = (e) => {
     e.stopPropagation();
     setEditingIndex(null);
+  };
+
+  const handleDeleteBooth = async (boothId, e) => {
+    e.stopPropagation();
+    if (!window.confirm("부스를 삭제하시겠습니까?\n삭제된 부스는 복구할 수 없습니다.")) return;
+    
+    try {
+      await deleteBooth(boothId);
+      await fetchBooths();
+      alert("부스가 삭제되었습니다.");
+    } catch (err) {
+      alert(err.response?.data?.message || "부스 삭제에 실패했습니다.");
+    }
   };
 
   const handleLogout = async () => {
@@ -415,6 +424,10 @@ const BoothSelect = () => {
                                   <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
                                     승인 거절됨
                                   </span>
+                                ) : booth.boothStatus === "SUSPENDED" ? (
+                                  <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
+                                    ⛔ 운영 중지됨
+                                  </span>
                                 ) : (
                                   <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded-md">
                                     승인 완료
@@ -430,24 +443,28 @@ const BoothSelect = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={(e) => handleStartEdit(index, e, booth)}
-                              className="p-2.5 text-toss-blue hover:bg-blue-50 rounded-xl transition-colors"
-                              title="수정"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteBooth(booth, e)}
-                              className="p-2.5 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors"
-                              title="삭제"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                            {booth.boothStatus !== "SUSPENDED" && (
+                              <>
+                                <button
+                                  onClick={(e) => handleStartEdit(index, e, booth)}
+                                  className="p-2.5 text-toss-blue hover:bg-blue-50 rounded-xl transition-colors"
+                                  title="수정"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteBooth(booth.boothId || booth.id, e)}
+                                  className="p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                                  title="삭제"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}

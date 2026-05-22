@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import SalesChart from "../../components/owner/SalesChart";
 import { formatPrice } from "../../utils/format";
-import { getOrders } from "../../utils/mockApi";
+import { getSalesSummary } from "../../api/orderApi";
+import { getBoothInfo } from "../../utils/storeInfo";
 
 /* -----------------------------
    Toss-Style Date Range Picker (기존 유지)
@@ -459,99 +460,46 @@ const SalesManage = () => {
   const [endDate, setEndDate] = useState(saved?.endDate || todayISO);
   const [selectedDate, setSelectedDate] = useState(null);
 
-  const [orders, setOrders] = useState([]);
+  const [salesSummary, setSalesSummary] = useState({
+    totalSales: 0,
+    totalOrderCount: 0,
+    dailySales: []
+  });
 
-  // closings는 "스냅샷/마감 정보"가 섞여 있을 수 있음
-  const [closings, setClosings] = useState(loadClosings);
+  const currentBooth = getBoothInfo();
 
-  // ✅ 주문 실시간 반영(매출 즉시 반영)
   useEffect(() => {
-    const fetch = () => setOrders(getOrders() || []);
-    fetch();
-    const t = setInterval(fetch, 700);
+    const fetchSales = async () => {
+      if (!currentBooth?.boothId || !startDate || !endDate) return;
+      try {
+        const data = await getSalesSummary(currentBooth.boothId, startDate, endDate);
+        setSalesSummary(data || { totalSales: 0, totalOrderCount: 0, dailySales: [] });
+      } catch (err) {
+        console.error("Failed to load sales summary:", err);
+      }
+    };
+    fetchSales();
+    const t = setInterval(fetchSales, 3000);
     return () => clearInterval(t);
-  }, []);
+  }, [currentBooth?.boothId, startDate, endDate]);
 
-  // ✅ 날짜 범위 저장(탭 이동해도 유지)
   useEffect(() => saveRange(startDate, endDate), [startDate, endDate]);
 
-  // ✅ 다른 탭(영업관리 등)에서 closings가 바뀌면 1초마다 반영
-  useEffect(() => {
-    const t = setInterval(() => setClosings(loadClosings()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  // ✅ 완료 기준: 처리완료 주문만 대상
-  const baseOrders = useMemo(() => {
-    const all = orders || [];
-    return all.filter((o) => isCompletedStatus(o.status));
-  }, [orders]);
-
-  // 날짜 범위 안의 "완료 주문"만
-  const rangedOrdersRaw = useMemo(() => {
-    return baseOrders
-      .map((o) => {
-        const t = getTimeKeyByDone(o);
-        const d = t ? new Date(t) : null;
-        if (!d || isNaN(d.getTime())) return null;
-
-        const iso = toISO(d);
-        if (iso < startDate || iso > endDate) return null;
-
-        return { ...o, __dateISO: iso, __dateObj: d };
-      })
-      .filter(Boolean);
-  }, [baseOrders, startDate, endDate]);
-
-  // ✅ 일자별 집계
-  // - 기본: 실시간 집계
-  // - 단, closings[iso]가 "스냅샷(totalSales/totalOrders)"이면 그 날은 확정값으로 덮어쓰기
-  const dailyAgg = useMemo(() => {
-    const map = new Map(); // iso -> {amount, count, closedAt?, closed?}
-
-    // 1) 실시간 집계
-    for (const o of rangedOrdersRaw) {
-      const iso = o.__dateISO;
-      const price = Number(o.totalAmount ?? o.totalPrice ?? o.price ?? 0) || 0;
-
-      const prev = map.get(iso) || { amount: 0, count: 0 };
-      map.set(iso, { amount: prev.amount + price, count: prev.count + 1 });
-    }
-
-    // 2) 스냅샷이 있으면 그 날만 확정으로 덮어쓰기
-    for (const iso of Object.keys(closings || {})) {
-      const c = closings[iso];
-
-      // 범위 밖이면 무시
-      if (iso < startDate || iso > endDate) continue;
-
-      // ✅ 스냅샷이 "있는 경우"에만 덮어쓰기
-      if (!hasSnapshot(c)) continue;
-
-      map.set(iso, {
-        amount: Number(c.totalSales || 0),
-        count: Number(c.totalOrders || 0),
-        closedAt: c.closedAt,
-        closed: true,
+  const dailyMap = useMemo(() => {
+    const map = new Map();
+    (salesSummary.dailySales || []).forEach(day => {
+      let amount = 0;
+      (day.orders || []).forEach(o => {
+        amount += (o.amount || 0);
       });
-    }
-
+      map.set(day.date, { amount, count: day.totalOrderCount || 0, orders: day.orders || [] });
+    });
     return map;
-  }, [rangedOrdersRaw, closings, startDate, endDate]);
+  }, [salesSummary]);
 
-  const totalSales = useMemo(() => {
-    let sum = 0;
-    for (const v of dailyAgg.values()) sum += v.amount;
-    return sum;
-  }, [dailyAgg]);
+  const totalSales = salesSummary.totalSales || 0;
+  const totalOrders = salesSummary.totalOrderCount || 0;
 
-  const totalOrders = useMemo(() => {
-    let cnt = 0;
-    for (const v of dailyAgg.values()) cnt += v.count;
-    return cnt;
-  }, [dailyAgg]);
-
-  // 범위 내 날짜를 연속으로 생성해서 차트로 (0원도 표시)
   const chartData = useMemo(() => {
     const s = fromISO(startDate);
     const e = fromISO(endDate);
@@ -561,52 +509,30 @@ const SalesManage = () => {
     const cur = new Date(s);
     while (cur.getTime() <= e.getTime()) {
       const iso = toISO(cur);
-      const agg = dailyAgg.get(iso) || { amount: 0, count: 0 };
-      const label = `${cur.getMonth() + 1}/${cur.getDate()} (${
-        kWeek[cur.getDay()]
-      })`;
+      const agg = dailyMap.get(iso) || { amount: 0, count: 0, orders: [] };
+      const label = `${cur.getMonth() + 1}/${cur.getDate()} (${kWeek[cur.getDay()]})`;
 
       out.push({ date: label, amount: agg.amount, fullDate: iso });
       cur.setDate(cur.getDate() + 1);
     }
     return out;
-  }, [startDate, endDate, dailyAgg]);
+  }, [startDate, endDate, dailyMap]);
 
-  // 상세: 선택 날짜의 주문 리스트
   const selectedOrders = useMemo(() => {
     if (!selectedDate) return [];
-    return rangedOrdersRaw
-      .filter((o) => o.__dateISO === selectedDate)
-      .sort(
-        (a, b) =>
-          (b.__dateObj?.getTime?.() || 0) - (a.__dateObj?.getTime?.() || 0)
-      )
-      .map((o) => {
-        const d = o.__dateObj;
-        const time = d
-          ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : "-";
+    const dayData = dailyMap.get(selectedDate);
+    if (!dayData || !dayData.orders) return [];
 
-        const menus = Array.isArray(o.menus)
-          ? o.menus
-          : Array.isArray(o.menu)
-          ? o.menu
-          : [];
+    return [...dayData.orders]
+      .sort((a, b) => (b.orderTime > a.orderTime ? 1 : -1))
+      .map((o, idx) => ({
+        id: idx,
+        time: o.orderTime ? o.orderTime.substring(0, 5) : "-", // 13:25:10 -> 13:25
+        menu: "주문", // API에서 상세 메뉴를 안 줄 경우 기본 텍스트
+        price: o.amount || 0
+      }));
+  }, [selectedDate, dailyMap]);
 
-        const menuText =
-          menus.length > 0
-            ? `${menus[0]?.name || "메뉴"} x${menus[0]?.count || 1}${
-                menus.length > 1 ? ` 외 ${menus.length - 1}건` : ""
-              }`
-            : "주문";
-
-        const price =
-          Number(o.totalAmount ?? o.totalPrice ?? o.price ?? 0) || 0;
-        return { id: o.id, time, menu: menuText, price };
-      });
-  }, [selectedDate, rangedOrdersRaw]);
-
-  // 선택 날짜가 범위 밖이면 해제
   useEffect(() => {
     if (!selectedDate) return;
     if (selectedDate < startDate || selectedDate > endDate) {
@@ -614,17 +540,13 @@ const SalesManage = () => {
     }
   }, [selectedDate, startDate, endDate]);
 
-  // ✅ 오늘 현재 집계(표시용)
   const todayAgg = useMemo(() => {
-    const v = dailyAgg.get(todayISO);
+    const v = dailyMap.get(todayISO);
     return { amount: v?.amount || 0, count: v?.count || 0 };
-  }, [dailyAgg, todayISO]);
+  }, [dailyMap, todayISO]);
 
-  // ✅ 선택 날짜가 "확정 스냅샷"인지 여부
-  const isSelectedDateFinalized = useMemo(() => {
-    const c = closings?.[selectedDate];
-    return hasSnapshot(c);
-  }, [closings, selectedDate]);
+  const isSelectedDateFinalized = false; // 더 이상 로컬 스냅샷 기능 미사용
+
 
   return (
     <div className="pb-10 font-sans px-2">
@@ -692,7 +614,7 @@ const SalesManage = () => {
             </span>
             주문 내역
             <span className="ml-2 text-sm text-toss-light font-medium">
-              (총 {dailyAgg.get(selectedDate)?.count || 0}건)
+              (총 {dailyMap.get(selectedDate)?.count || 0}건)
             </span>
             {isSelectedDateFinalized ? (
               <span className="ml-3 px-2 py-1 rounded-lg bg-blue-50 text-toss-blue text-xs font-bold">

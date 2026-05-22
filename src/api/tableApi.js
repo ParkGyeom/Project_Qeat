@@ -1,4 +1,5 @@
 import axios from './axios';
+import defaultAxios from 'axios';
 
 // 테이블 목록 조회
 export const getTables = async (boothId) => {
@@ -36,6 +37,6 @@ export const activateTable = async (boothId, tableId) => {
 
 // 손님용: 토큰으로 테이블 및 메뉴 정보 조회
 export const getPublicTableInfo = async (tableToken) => {
-  const response = await axios.get(`/api/public/tables/${tableToken}`);
+  const response = await defaultAxios.get(`${import.meta.env.VITE_API_BASE_URL || ''}/api/public/tables/${tableToken}`);
   return response.data;
 };

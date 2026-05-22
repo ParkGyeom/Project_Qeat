@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { getOrders } from "../utils/mockApi";
+import { getOrders } from "../api/orderApi";
 import { getBoothInfo, setBoothInfo } from "../utils/storeInfo";
-import { getMyBooths } from "../api/boothApi";
+import { getMyBooths, getMyApprovedBooths, getPendingBooths } from "../api/boothApi";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -15,44 +15,74 @@ const AdminLayout = () => {
   const [pendingOrderCount, setPendingOrderCount] = useState(0);
   const [showOrderToast, setShowOrderToast] = useState(false);
 
+  // 알림음 오디오 객체 미리 생성 (브라우저 정책 우회 도움)
+  const [audio] = useState(() => new Audio("/sounds/dingdong.mp3"));
+
   // 알림음 재생 함수
   const playNotificationSound = () => {
-    const audio = new Audio("/sounds/dingdong.mp3?v=" + Date.now());
-    audio.play().catch(() => {
-      console.log("화면을 클릭해야 알림음이 재생됩니다.");
+    audio.currentTime = 0;
+    audio.play().catch((e) => {
+      console.log("화면을 클릭해야 알림음이 재생됩니다.", e);
     });
   };
+
+  // ✅ location.pathname 변경 시 interval 초기화를 막기 위해 ref로 추적
+  const locationPathRef = useRef(location.pathname);
+  useEffect(() => {
+    locationPathRef.current = location.pathname;
+  }, [location.pathname]);
+
+  const prevLatestOrderIdRef = useRef(null);
 
   // 실시간 주문 감지 로직(사장님 페이지에서만)
   useEffect(() => {
     if (isAdmin) return;
 
-    const initialOrders = getOrders() || [];
-    prevCountRef.current = initialOrders.filter(
-      (o) => o.status === "접수대기"
-    ).length;
+    const checkNewOrders = async () => {
+      const booth = getBoothInfo();
+      if (!booth?.boothId) return;
 
-    const checkNewOrders = () => {
-      const allOrders = getOrders() || [];
-      const currentActiveCount = allOrders.filter(
-        (o) => o.status === "접수대기"
-      ).length;
-
-      setPendingOrderCount(currentActiveCount); // ✅ 상태 업데이트
-
-      if (currentActiveCount > prevCountRef.current) {
-        playNotificationSound();
+      try {
+        const allOrders = await getOrders(booth.boothId);
+        const pendingOrders = (allOrders || []).filter(
+          (o) => o.status === "접수대기"
+        );
         
-        // 사장님 페이지이고 현재 주문 관리 페이지가 아닐 때만 팝업 노출
-        if (!isAdmin && location.pathname !== "/owner/orders") {
-          setShowOrderToast(true);
-          // 5초 뒤 자동 삭제
-          setTimeout(() => setShowOrderToast(false), 5000);
+        const currentActiveCount = pendingOrders.length;
+        setPendingOrderCount(currentActiveCount); // ✅ 상태 업데이트
+
+        // 접수대기 중인 주문 중 가장 큰 ID 찾기 (없으면 0)
+        const latestOrderId = pendingOrders.length > 0
+          ? Math.max(...pendingOrders.map((o) => o.id))
+          : 0;
+
+        // 처음 로드될 때는 알림을 울리지 않도록 처리 (초기값 세팅)
+        if (prevLatestOrderIdRef.current === null) {
+          prevLatestOrderIdRef.current = latestOrderId;
+          return;
         }
+
+        // 새 주문(가장 큰 ID가 기존 최고 ID보다 커짐)이 들어왔을 때
+        if (latestOrderId > prevLatestOrderIdRef.current) {
+          playNotificationSound();
+          
+          // 사장님 페이지이고 현재 주문 관리 페이지가 아닐 때만 팝업 노출
+          if (!isAdmin && locationPathRef.current !== "/owner/orders") {
+            setShowOrderToast(true);
+            // 5초 뒤 자동 삭제
+            setTimeout(() => setShowOrderToast(false), 5000);
+          }
+        }
+        
+        // 최고 ID 갱신 (항상 가장 큰 값 유지)
+        prevLatestOrderIdRef.current = Math.max(prevLatestOrderIdRef.current, latestOrderId);
+      } catch (err) {
+        console.error("Failed to check new orders for notification", err);
       }
-      prevCountRef.current = currentActiveCount;
     };
 
+    // 초기 상태 구분을 위해 null로 설정
+    prevLatestOrderIdRef.current = null;
     checkNewOrders(); // 초기 즉시 실행
     const interval = setInterval(checkNewOrders, 3000);
     return () => clearInterval(interval);
@@ -65,18 +95,12 @@ const AdminLayout = () => {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const checkPendingBooths = () => {
+    const checkPendingBooths = async () => {
       try {
-        // ✅ 부스 대기 건수 체크
-        const rawBooths = localStorage.getItem("owner_booths_v1");
-        const allBooths = rawBooths ? JSON.parse(rawBooths) : {};
-        let boothCount = 0;
-        Object.values(allBooths).forEach((boothList) => {
-          boothCount += boothList.filter((b) => b.status === "pending").length;
-        });
-        setPendingBoothCount(boothCount);
+        const data = await getPendingBooths();
+        setPendingBoothCount(data?.length || 0);
       } catch (e) {
-        console.error("Failed to load owners for pending count", e);
+        console.error("Failed to load pending booths count", e);
       }
     };
 
@@ -115,10 +139,20 @@ const AdminLayout = () => {
     
     const fetchBooths = async () => {
       try {
-        const list = await getMyBooths();
+        const list = await getMyApprovedBooths();
         setMyBooths(list);
+        
+        // 현재 선택된 부스가 승인된 목록에 없으면(또는 선택을 안 했으면) 튕겨냄
+        const current = getBoothInfo();
+        if (current && current.boothId) {
+          const isApproved = list.some(b => b.boothId === current.boothId || b.id === current.boothId);
+          if (!isApproved) {
+            alert("승인되지 않았거나 접근할 수 없는 부스입니다.");
+            navigate("/owner/select");
+          }
+        }
       } catch (err) {
-        console.error("Failed to fetch booths in layout", err);
+        console.error("Failed to fetch approved booths in layout", err);
       }
     };
     
@@ -126,7 +160,7 @@ const AdminLayout = () => {
     
     // 현재 부스 정보 동기화
     setCurrentBooth(getBoothInfo());
-  }, [isAdmin, location.pathname]);
+  }, [isAdmin, location.pathname, navigate]);
 
   const handleBoothChange = (booth) => {
     setBoothInfo(booth);

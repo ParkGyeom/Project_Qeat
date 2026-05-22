@@ -1,30 +1,23 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import {
-  isBusinessClosedToday,
-  closeBusinessToday,
-  reopenBusinessToday,
-  getCloseTimeToday,
-  setCloseTimeToday,
-  clearCloseTimeToday,
-  isClosingSoon,
-  minutesToClose,
-  ensureAutoCloseToday,
-} from "../../utils/businessStatus";
-
-import { getBoothInfo, getStoreName } from "../../utils/storeInfo";
+import { getBoothInfo, getStoreName, setBoothInfo } from "../../utils/storeInfo";
 import { getTables, bulkCreateTables, deactivateTable, activateTable } from "../../api/tableApi";
+import { getMyApprovedBooths, updateBoothOpenStatus, updateBoothOperatingTime, deleteBoothOperatingTime, deleteBooth } from "../../api/boothApi";
 import TossTimePicker from "../../components/common/TossTimePicker.jsx";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const BusinessManage = () => {
   const [isClosed, setIsClosed] = useState(false);
-  const [time, setTime] = useState(getCloseTimeToday() || "");
-  const [savedTime, setSavedTime] = useState(null);
+  const [openTime, setOpenTime] = useState("");
+  const [closeTime, setCloseTime] = useState("");
+  const [savedOpenTime, setSavedOpenTime] = useState(null);
+  const [savedCloseTime, setSavedCloseTime] = useState(null);
   const [closingSoon, setClosingSoon] = useState(false);
   const [minLeft, setMinLeft] = useState(null);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+  const [timePickerTarget, setTimePickerTarget] = useState(null); // "open" | "close"
 
   // 테이블 관련 State
   const [tables, setTables] = useState([]);
@@ -33,71 +26,244 @@ const BusinessManage = () => {
 
   const currentBooth = getBoothInfo();
   const currentStoreName = getStoreName();
+  const navigate = useNavigate();
+
+  const handleDeleteBooth = async () => {
+    const targetId = currentBooth?.boothId || currentBooth?.id;
+    if (!targetId) return;
+    if (!window.confirm("부스를 정말 삭제하시겠습니까?\n삭제 후 복구할 수 없으며 영업이 즉시 중단됩니다.")) return;
+    
+    try {
+      await deleteBooth(targetId);
+      alert("부스가 삭제되었습니다.");
+      navigate("/owner/select");
+    } catch (err) {
+      alert(err.response?.data?.message || "부스 삭제에 실패했습니다.");
+    }
+  };
 
   // 테이블 목록 불러오기
   const fetchTables = async () => {
-    if (!currentBooth?.boothId) return;
+    const targetId = currentBooth?.boothId || currentBooth?.id;
+    if (!targetId) return;
     try {
-      const data = await getTables(currentBooth.boothId);
+      const data = await getTables(targetId);
       setTables(data);
     } catch (err) {
       console.error("Failed to fetch tables", err);
     }
   };
 
+  // 부스 세부 정보(상태) 불러오기
+  const fetchBoothStatus = async () => {
+    const targetId = currentBooth?.boothId || currentBooth?.id;
+    if (!targetId) return;
+    try {
+      // getBoothDetail (GET /api/booths/{id}) API가 백엔드에 없을 수 있으므로
+      // 안전하게 getMyApprovedBooths를 호출해서 승인된 내 부스 목록 중 현재 부스를 찾습니다.
+      const booths = await getMyApprovedBooths();
+      const data = booths.find((b) => b.id === targetId || b.boothId === targetId);
+      
+      if (!data) return;
+
+      const ot = data.openTime ? data.openTime.substring(0, 5) : null;
+      const ct = data.closeTime ? data.closeTime.substring(0, 5) : null;
+      setSavedOpenTime(ot);
+      setSavedCloseTime(ct);
+      if (ot && !openTime) setOpenTime(ot);
+      if (ct && !closeTime) setCloseTime(ct);
+
+      // 마감 임박 및 프론트엔드 자동 마감/오픈 계산
+      // (백엔드 스케줄러가 없을 때를 대비해 로컬 시간에 기반하여 임시 처리)
+      if (ot && ct) {
+        const now = new Date();
+        const [oh, om] = ot.split(":").map(Number);
+        const [ch, cm] = ct.split(":").map(Number);
+        
+        const openDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), oh, om, 0);
+        const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
+        
+        // 자정을 넘기는 영업시간 지원 (예: 18:00 ~ 02:00)
+        if (closeDate <= openDate) {
+          if (now.getHours() < ch) {
+            openDate.setDate(openDate.getDate() - 1);
+          } else {
+            closeDate.setDate(closeDate.getDate() + 1);
+          }
+        }
+
+        const isTimeBetween = now.getTime() >= openDate.getTime() && now.getTime() < closeDate.getTime();
+        
+        if (!isTimeBetween) {
+          // 시간이 아닐 때는 무조건 마감 처리
+          setIsClosed(true);
+          setClosingSoon(false);
+          setMinLeft(null);
+        } else {
+          // 시간이 맞을 때 백엔드 open이 false면 (수동 마감), 수동 마감 존중
+          if (data.open !== undefined && data.open === false) {
+            setIsClosed(true);
+            setClosingSoon(false);
+            setMinLeft(null);
+          } else {
+            // 수동 마감이 아니면 정상 영업중
+            setIsClosed(false);
+            
+            const diffMs = closeDate.getTime() - now.getTime();
+            const diffMin = Math.floor(diffMs / 60000);
+            if (diffMin > 0 && diffMin <= 60) {
+              setClosingSoon(true);
+              setMinLeft(diffMin);
+            } else {
+              setClosingSoon(false);
+              setMinLeft(null);
+            }
+          }
+        }
+      } else if (ct) {
+        // 오픈 시간 없이 마감 시간만 있는 경우 기존 로직 유지
+        const now = new Date();
+        const [ch, cm] = ct.split(":").map(Number);
+        const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
+        
+        const diffMs = closeDate.getTime() - now.getTime();
+        const diffMin = Math.floor(diffMs / 60000);
+
+        if (diffMs <= 0) {
+          setIsClosed(true);
+          setClosingSoon(false);
+          setMinLeft(null);
+        } else {
+          if (data.open !== undefined && data.open === false) {
+            setIsClosed(true);
+          } else {
+            setIsClosed(false);
+            if (diffMin > 0 && diffMin <= 60) {
+              setClosingSoon(true);
+              setMinLeft(diffMin);
+            } else {
+              setClosingSoon(false);
+              setMinLeft(null);
+            }
+          }
+        }
+      } else {
+        // 영업 시간 설정이 없는 경우
+        if (data.open !== undefined) {
+          setIsClosed(!data.open);
+        }
+        setClosingSoon(false);
+        setMinLeft(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch booth status", err);
+    }
+  };
+
   useEffect(() => {
-    const tick = () => {
-      ensureAutoCloseToday();
-      setIsClosed(isBusinessClosedToday());
-
-      const t = getCloseTimeToday();
-      setSavedTime(t);
-      setClosingSoon(isClosingSoon());
-      setMinLeft(minutesToClose());
-    };
-
-    tick();
-    const id = setInterval(tick, 1000);
-
+    fetchBoothStatus();
     fetchTables();
-
+    
+    // 매 분마다 마감 임박 업데이트
+    const id = setInterval(fetchBoothStatus, 60000);
     return () => clearInterval(id);
   }, []);
 
-  const handleToggleClose = () => {
-    if (isClosed) {
-      const ok = window.confirm("오늘 영업을 다시 재개하시겠습니까?");
-      if (!ok) return;
-      reopenBusinessToday();
-    } else {
-      const ok = window.confirm(
-        "오늘 영업을 마감하시겠습니까?\n손님 주문이 즉시 불가능해집니다."
-      );
-      if (!ok) return;
-      closeBusinessToday();
+  const handleToggleClose = async () => {
+    const targetId = currentBooth?.boothId || currentBooth?.id;
+    if (!targetId) return;
+    const ok = window.confirm(
+      isClosed ? "오늘 영업을 다시 재개하시겠습니까?" : "오늘 영업을 마감하시겠습니까?\n손님 주문이 즉시 불가능해집니다."
+    );
+    if (!ok) return;
+
+    try {
+      const updatedData = await updateBoothOpenStatus(targetId, isClosed);
+      
+      // 즉시 상태 반영 (GET api가 없더라도 동작하도록)
+      if (updatedData && updatedData.open !== undefined) {
+        setIsClosed(!updatedData.open);
+      }
+      
+      // 마감 시간이 지났는데 영업 재개를 누른 경우, 강제 마감을 피하기 위해 설정된 마감시간을 삭제합니다.
+      if (isClosed && savedCloseTime) {
+        const now = new Date();
+        const [ch, cm] = savedCloseTime.split(":").map(Number);
+        const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
+        
+        // 자정을 넘기는 영업시간 처리 (예: 18:00 ~ 02:00)
+        if (savedOpenTime) {
+          const [oh, om] = savedOpenTime.split(":").map(Number);
+          const openDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), oh, om, 0);
+          if (closeDate <= openDate) {
+             if (now.getHours() < ch) {
+               openDate.setDate(openDate.getDate() - 1);
+             } else {
+               closeDate.setDate(closeDate.getDate() + 1);
+             }
+          }
+        }
+
+        if (now.getTime() >= closeDate.getTime()) {
+          await deleteBoothOperatingTime(targetId);
+        }
+      }
+      
+      // 상태 변경 후 서버에서 최신 상태를 다시 불러와서 정확하게 동기화 시도
+      await fetchBoothStatus();
+    } catch (err) {
+      alert("영업 상태 변경에 실패했습니다.");
     }
   };
 
-  const handleSaveTime = () => {
-    if (!time) {
-      alert("시간을 설정해주세요.");
+  const handleSaveTime = async () => {
+    if (!openTime || !closeTime) {
+      alert("오픈 시간과 마감 시간을 모두 설정해주세요.");
       return;
     }
-    setCloseTimeToday(time);
-    setSavedTime(time);
-    alert("마감시간이 저장되었습니다.");
+    const targetId = currentBooth?.boothId || currentBooth?.id;
+    if (!targetId) return;
+
+    try {
+      const openTimePayload = openTime.length === 5 ? openTime + ":00" : openTime;
+      const closeTimePayload = closeTime.length === 5 ? closeTime + ":00" : closeTime;
+      
+      const data = await updateBoothOperatingTime(targetId, openTimePayload, closeTimePayload);
+      const ot = data.openTime ? data.openTime.substring(0, 5) : null;
+      const ct = data.closeTime ? data.closeTime.substring(0, 5) : null;
+      setSavedOpenTime(ot);
+      setSavedCloseTime(ct);
+      alert("영업시간이 저장되었습니다.");
+      fetchBoothStatus();
+    } catch (err) {
+      alert("영업시간 저장에 실패했습니다.");
+    }
   };
 
-  const handleClearTime = () => {
-    const ok = window.confirm("오늘 마감시간 설정을 삭제할까요?");
+  const handleClearTime = async () => {
+    const targetId = currentBooth?.boothId || currentBooth?.id;
+    if (!targetId) return;
+    const ok = window.confirm("오늘 영업시간 설정을 삭제할까요?");
     if (!ok) return;
-    clearCloseTimeToday();
-    setTime("");
-    setSavedTime(null);
+
+    try {
+      await deleteBoothOperatingTime(targetId);
+      setOpenTime("");
+      setCloseTime("");
+      setSavedOpenTime(null);
+      setSavedCloseTime(null);
+      fetchBoothStatus();
+    } catch (err) {
+      alert("영업시간 삭제에 실패했습니다.");
+    }
   };
 
   const handleTimeConfirm = (newTime) => {
-    setTime(newTime);
+    if (timePickerTarget === "open") {
+      setOpenTime(newTime);
+    } else {
+      setCloseTime(newTime);
+    }
   };
 
   const handleBulkAdd = async () => {
@@ -106,11 +272,12 @@ const BusinessManage = () => {
       alert("추가할 테이블 개수를 입력해주세요.");
       return;
     }
-    if (!currentBooth?.boothId) return;
+    const targetId = currentBooth?.boothId || currentBooth?.id;
+    if (!targetId) return;
 
     setIsAddingTable(true);
     try {
-      await bulkCreateTables(currentBooth.boothId, count);
+      await bulkCreateTables(targetId, count);
       setAddCount("");
       await fetchTables();
     } catch (err) {
@@ -121,9 +288,10 @@ const BusinessManage = () => {
   };
 
   const handleDeactivateTable = async (tableId) => {
+    const targetId = currentBooth?.boothId || currentBooth?.id;
     if (!window.confirm("이 테이블을 비활성화하시겠습니까?")) return;
     try {
-      await deactivateTable(currentBooth.boothId, tableId);
+      await deactivateTable(targetId, tableId);
       await fetchTables();
     } catch (err) {
       alert("비활성화에 실패했습니다.");
@@ -131,9 +299,10 @@ const BusinessManage = () => {
   };
 
   const handleActivateTable = async (tableId) => {
+    const targetId = currentBooth?.boothId || currentBooth?.id;
     if (!window.confirm("이 테이블을 다시 활성화하시겠습니까?\nQR 코드는 기존 그대로 유지됩니다.")) return;
     try {
-      await activateTable(currentBooth.boothId, tableId);
+      await activateTable(targetId, tableId);
       await fetchTables();
     } catch (err) {
       alert("활성화에 실패했습니다.");
@@ -202,59 +371,74 @@ const BusinessManage = () => {
         </p>
       </div>
 
-      {/* 3. 마감시간 설정 영역 */}
+      {/* 3. 영업시간 설정 영역 */}
       <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-50 mb-8">
         <p className="text-toss-light text-[15px] font-bold mb-3">
-          오늘 마감시간 설정
+          오늘 영업시간 설정
         </p>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsTimePickerOpen(true)}
-            className="flex items-center bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl px-5 py-3 transition-colors group"
-          >
-            <span className="text-sm font-bold text-gray-500 mr-3">
-              마감시간
-            </span>
-            <span
-              className={`text-xl font-bold ${
-                time
-                  ? "text-gray-800 group-hover:text-toss-blue"
-                  : "text-gray-400"
-              }`}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setTimePickerTarget("open");
+                setIsTimePickerOpen(true);
+              }}
+              className="flex items-center bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl px-5 py-3 transition-colors group flex-1 justify-center sm:flex-none"
             >
-              {formatDisplayTime(time)}
-            </span>
-            <svg
-              className="w-5 h-5 ml-2 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+              <span className="text-sm font-bold text-gray-500 mr-3">
+                오픈시간
+              </span>
+              <span
+                className={`text-xl font-bold ${
+                  openTime
+                    ? "text-gray-800 group-hover:text-toss-blue"
+                    : "text-gray-400"
+                }`}
+              >
+                {formatDisplayTime(openTime)}
+              </span>
+            </button>
+            <span className="text-gray-400 font-bold mx-1">-</span>
+            <button
+              onClick={() => {
+                setTimePickerTarget("close");
+                setIsTimePickerOpen(true);
+              }}
+              className="flex items-center bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl px-5 py-3 transition-colors group flex-1 justify-center sm:flex-none"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-          </button>
-          <button
-            onClick={handleSaveTime}
-            className="px-4 py-3 rounded-2xl font-bold text-sm text-toss-blue bg-blue-50 hover:bg-blue-100 transition whitespace-nowrap"
-          >
-            설정 저장
-          </button>
-          <button
-            onClick={handleClearTime}
-            className="px-4 py-3 rounded-2xl font-bold text-sm text-gray-600 hover:bg-gray-50 transition whitespace-nowrap"
-          >
-            삭제
-          </button>
+              <span className="text-sm font-bold text-gray-500 mr-3">
+                마감시간
+              </span>
+              <span
+                className={`text-xl font-bold ${
+                  closeTime
+                    ? "text-gray-800 group-hover:text-toss-blue"
+                    : "text-gray-400"
+                }`}
+              >
+                {formatDisplayTime(closeTime)}
+              </span>
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSaveTime}
+              className="px-4 py-3 rounded-2xl font-bold text-sm text-toss-blue bg-blue-50 hover:bg-blue-100 transition whitespace-nowrap flex-1"
+            >
+              설정 저장
+            </button>
+            <button
+              onClick={handleClearTime}
+              className="px-4 py-3 rounded-2xl font-bold text-sm text-gray-600 hover:bg-gray-50 transition whitespace-nowrap flex-1"
+            >
+              초기화
+            </button>
+          </div>
         </div>
         <p className="mt-3 text-xs text-gray-400">
-          {savedTime
-            ? `현재 저장된 마감시간: ${savedTime}`
-            : "설정 없음 (자동 마감/경고 비활성)"}
+          {savedOpenTime && savedCloseTime
+            ? `현재 저장된 영업시간: ${savedOpenTime} ~ ${savedCloseTime}`
+            : "설정 없음 (자동 영업/마감 비활성)"}
         </p>
       </div>
 
@@ -414,11 +598,21 @@ const BusinessManage = () => {
         </div>
       )}
 
+      {/* 6. 부스 삭제 영역 (위험 구역) */}
+      <div className="mt-8 pt-8 border-t border-gray-200/60 flex justify-end">
+        <button
+          onClick={handleDeleteBooth}
+          className="px-4 py-2 text-sm font-bold text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+        >
+          부스 삭제하기
+        </button>
+      </div>
+
       <TossTimePicker
         isOpen={isTimePickerOpen}
         onClose={() => setIsTimePickerOpen(false)}
         onConfirm={handleTimeConfirm}
-        initialTime={time || "22:00"}
+        initialTime={timePickerTarget === "open" ? (openTime || "09:00") : (closeTime || "22:00")}
       />
 
       <style>

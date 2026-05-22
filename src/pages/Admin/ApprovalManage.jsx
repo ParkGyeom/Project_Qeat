@@ -114,7 +114,7 @@ const ApprovalManage = () => {
                 </div>
 
                 <p className="text-xs text-gray-400 mt-2">
-                  신청일: {formatDate(item.createdAt)}
+                  학년: {item.grade || "-"}
                 </p>
               </div>
 

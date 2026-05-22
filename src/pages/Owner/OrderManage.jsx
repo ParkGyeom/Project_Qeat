@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import OrderCard from "../../components/owner/OrderCard";
-import { getOrders, updateOrder } from "../../utils/mockApi";
-
+import { getOrders, updateOrderStatus, cancelOrder } from "../../api/orderApi";
+import { getBoothInfo } from "../../utils/storeInfo";
 const getTimeLabel = (order, mode) => {
   // mode: "order" | "done"
   const parse = (v) => {
@@ -32,12 +32,19 @@ const OrderManage = () => {
   const [activeTab, setActiveTab] = useState("active");
   const [orders, setOrders] = useState([]);
 
+  const currentBooth = getBoothInfo();
+
   // 주문 목록 로드
   useEffect(() => {
-    const fetchOrders = () => {
-      const allOrders = getOrders() || [];
-      const sortedOrders = [...allOrders].sort((a, b) => b.id - a.id);
-      setOrders(sortedOrders);
+    const fetchOrders = async () => {
+      if (!currentBooth?.boothId) return;
+      try {
+        const allOrders = await getOrders(currentBooth.boothId);
+        const sortedOrders = [...(allOrders || [])].sort((a, b) => b.id - a.id);
+        setOrders(sortedOrders);
+      } catch (err) {
+        console.error("Failed to load orders:", err);
+      }
     };
 
     fetchOrders();
@@ -57,45 +64,33 @@ const OrderManage = () => {
     });
 
   // ✅ 주문 취소 처리
-  const handleCancel = (id) => {
+  const handleCancel = async (id) => {
     const targetOrder = orders.find((o) => o.id === id);
-    if (!targetOrder) return;
+    if (!targetOrder || !currentBooth?.boothId) return;
 
     if (!window.confirm("고객의 주문을 취소하시겠습니까?")) return;
 
-    // localStorage에서 완전히 삭제되도록 처리 (mockApi의 delete 로직 차용)
-    const key = `qeat_orders_${targetOrder.storeName || "기본"}`; // 실제 환경에 맞게 key 생성될 수 있으나 mockApi updateOrder 대신 삭제 처리
-    // 현재는 window 객체나 API를 통해 삭제 함수를 호출해야 하지만, mockApi에 별도 삭제 함수가 없으므로 state 제외 후 저장
-    const updatedOrders = orders.filter((o) => o.id !== id);
-    // 참고: mockApi 내부 구조상 로컬스토리지 키를 다시 구해야하지만, 여기서는 직접 저장소를 수정하거나 임시로 상태만 비웁니다.
-    // 안전하게 상태에서만 완전히 제거 처리 (다음에 로드될땐 서버/스토리지 로직에 따름)
-    
-    // 이부분은 실제 백엔드 연동 전 임시 방편으로 localStorage도 같이 비워줍니다. (mockApi.js 참고)
     try {
-       const orderKey = `qeat_orders_${localStorage.getItem("qeat_booth_detail_v1") ? JSON.parse(localStorage.getItem("qeat_booth_detail_v1")).name : ""}`;
-       if (orderKey.length > 13) {
-           localStorage.setItem(orderKey, JSON.stringify(updatedOrders));
-       }
-    } catch(e) {}
-
-    // 화면 즉시 반영 (아예 삭제)
-    setOrders(updatedOrders);
+      await cancelOrder(currentBooth.boothId, id);
+      // 화면 즉시 반영
+      setOrders(orders.filter((o) => o.id !== id));
+    } catch (err) {
+      console.error("Failed to cancel order:", err);
+      alert("주문 취소에 실패했습니다.");
+    }
   };
 
   // ✅ 상태 단계별 업데이트: 접수대기 -> 조리중 -> 처리완료
-  const handleStatusUpdate = (id) => {
+  const handleStatusUpdate = async (id) => {
     const targetOrder = orders.find((o) => o.id === id);
-    if (!targetOrder) return;
+    if (!targetOrder || !currentBooth?.boothId) return;
 
     let nextStatus = "";
     let confirmMsg = "";
-    const updated = { ...targetOrder };
 
     if (targetOrder.status === "접수대기") {
       nextStatus = "조리중";
       confirmMsg = "입금을 확인하셨나요? 조리중 상태로 변경합니다.";
-      // ✅ 입금 확인 시점(조리 시작 시점) 기록
-      updated.confirmedAt = new Date().toISOString();
     } else if (targetOrder.status === "조리중") {
       nextStatus = "처리완료";
       confirmMsg = "조리가 완료되었나요? 처리완료 상태로 이동합니다.";
@@ -103,12 +98,24 @@ const OrderManage = () => {
 
     if (!window.confirm(confirmMsg)) return;
 
-    updated.status = nextStatus;
-
-    const saved = updateOrder(updated);
-
-    // 화면 즉시 반영
-    setOrders((prev) => prev.map((o) => (o.id === id ? saved : o)));
+    try {
+      await updateOrderStatus(currentBooth.boothId, id, nextStatus);
+      // 화면 즉시 반영
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id === id) {
+            const updated = { ...o, status: nextStatus };
+            if (nextStatus === "조리중" && !o.confirmedAt) updated.confirmedAt = new Date().toISOString();
+            if (nextStatus === "처리완료" && !o.doneAt) updated.doneAt = new Date().toISOString();
+            return updated;
+          }
+          return o;
+        })
+      );
+    } catch (err) {
+      console.error("Failed to update order status:", err);
+      alert("주문 상태 변경에 실패했습니다.");
+    }
   };
 
   return (

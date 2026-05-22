@@ -107,7 +107,8 @@ const MenuManage = () => {
       setIsModalOpen(false);
       fetchMenusData();
     } catch (err) {
-      alert("메뉴 저장에 실패했습니다.");
+      console.error(err);
+      alert("메뉴 저장에 실패했습니다. 사유: " + JSON.stringify(err.response?.data || err.message));
     }
   };
 

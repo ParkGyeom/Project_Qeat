@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../components/common/Modal";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
+import { rejectBooth, getBoothOperators, getOperatorDetail, suspendBooth, approveBooth } from "../../api/boothApi";
 
 const OWNERS_KEY = "owners";
 
@@ -49,17 +50,56 @@ const prettyAccount = (digits) => {
 const pillBase =
   "inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold";
 const pillBlue = `${pillBase} bg-blue-50 text-toss-blue`;
-const pillRed = `${pillBase} bg-red-50 text-toss-red hover:bg-red-100 transition`;
 
 const StoreList = () => {
-  const [owners, setOwners] = useState(() => loadOwners());
+  const [owners, setOwners] = useState([]);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState(null); // 상세 모달용 owner 객체
+  const [selectedDetail, setSelectedDetail] = useState(null); // API로 받아온 상세 정보 객체
 
-  // 다른 탭/페이지 변경 자동 반영
+  const handleSelectOwner = async (o) => {
+    setSelected(o);
+    setSelectedDetail(null);
+    try {
+      const detail = await getOperatorDetail(o.userId);
+      setSelectedDetail(detail);
+    } catch (error) {
+      console.error("Failed to fetch operator details", error);
+    }
+  };
+
+  const fetchOperators = async () => {
+    try {
+      const responseData = await getBoothOperators();
+      const dataArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
+      
+      const formatted = dataArray.map(op => ({
+        id: op.studentNumber, // 로컬스토리지 부스 매핑을 위해 학번을 id로 사용
+        userId: op.userId,
+        name: op.name,
+        studentId: op.studentNumber,
+        department: op.major,
+        grade: op.grade,
+        boothCount: op.boothCount,
+        approved: true // 백엔드 API는 승인 완료된 사용자만 반환
+      }));
+      
+      // 로컬스토리지에 있는 가입대기자(approved: false) 유지
+      const localOwners = loadOwners().filter(o => !o.approved);
+      
+      setOwners([...formatted, ...localOwners]);
+    } catch (err) {
+      console.error("Failed to fetch operators:", err);
+      // 에러 시 로컬 데이터라도 보여줌
+      setOwners(loadOwners());
+    }
+  };
+
   useEffect(() => {
+    fetchOperators();
+    
     const onStorage = (e) => {
-      if (e.key === OWNERS_KEY) setOwners(loadOwners());
+      if (e.key === OWNERS_KEY) fetchOperators();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -83,7 +123,7 @@ const StoreList = () => {
 
   const hasQuery = q.trim().length > 0;
 
-  const refresh = () => setOwners(loadOwners());
+  const refresh = () => fetchOperators();
 
   // 승인 취소 = approved:false (가입승인 탭으로 다시 넘어가게 됨)
   const revokeApproval = (ownerId) => {
@@ -103,8 +143,75 @@ const StoreList = () => {
       saveOwners(next);
       setOwners(next);
 
-      // 혹시 상세 모달 열려있으면 닫아주기(승인취소 후 목록에서 사라지니 UX)
       setSelected((prev) => (prev?.id === ownerId ? null : prev));
+    }
+  };
+
+  // 부스 운영 중지
+  const suspendBoothApproval = async (booth, ownerId) => {
+    if (!window.confirm(`'${booth.name}' 부스의 운영을 강제로 중지하시겠습니까?`)) return;
+
+    try {
+      if (booth.boothId || booth.id) {
+        // 백엔드의 부스 중지 API 호출
+        await suspendBooth(booth.boothId || booth.id);
+      }
+    } catch (err) {
+      console.error("API call failed:", err);
+      alert("서버 오류: 부스 운영을 중지하지 못했습니다.");
+      return; // 에러 시 상태 변경 중단
+    }
+
+    try {
+      const allBooths = JSON.parse(localStorage.getItem(BOOTHS_KEY) || "{}");
+      // 로컬 스토리지에만 저장되는 데이터가 아니라 서버를 통해 다시 데이터를 받아올 수 있도록
+      // 상세 데이터가 있으면 상태만 변경(임시 처리)
+      if (selectedDetail) {
+        setSelectedDetail({
+          ...selectedDetail,
+          booths: selectedDetail.booths.map(b => 
+            b.boothId === (booth.boothId || booth.id) 
+              ? { ...b, boothStatus: "SUSPENDED" }
+              : b
+          )
+        });
+      }
+      alert("부스 운영이 중지되었습니다.");
+    } catch (err) {
+      console.error(err);
+      alert("부스 운영 중지 처리 중 문제가 발생했습니다.");
+    }
+  };
+
+  // 부스 운영 중지 해제
+  const resumeBoothApproval = async (booth) => {
+    if (!window.confirm(`'${booth.name}' 부스의 운영 중지를 해제하시겠습니까?`)) return;
+
+    try {
+      if (booth.boothId || booth.id) {
+        await approveBooth(booth.boothId || booth.id);
+      }
+    } catch (err) {
+      console.error("API call failed:", err);
+      alert("서버 오류: 부스 중지 해제에 실패했습니다.");
+      return;
+    }
+
+    try {
+      if (selectedDetail) {
+        setSelectedDetail({
+          ...selectedDetail,
+          booths: selectedDetail.booths.map(b =>
+            b.boothId === (booth.boothId || booth.id)
+              ? { ...b, boothStatus: "APPROVED" }
+              : b
+          )
+        });
+      }
+      alert("부스 운영이 재개되었습니다.");
+    } catch (err) {
+      console.error(err);
+      alert("부스 중지 해제 처리 중 문제가 발생했습니다.");
     }
   };
 
@@ -195,9 +302,6 @@ const StoreList = () => {
                   <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
                     운영 부스
                   </th>
-                  <th className="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
-                    관리
-                  </th>
                 </tr>
               </thead>
 
@@ -206,7 +310,7 @@ const StoreList = () => {
                   <tr
                     key={o.id}
                     className="hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => setSelected(o)}
+                    onClick={() => handleSelectOwner(o)}
                   >
                     <td className="p-5 align-middle text-center">
                       <span className={pillBlue}>승인 완료</span>
@@ -226,22 +330,9 @@ const StoreList = () => {
                     </td>
 
                     <td className="p-5 align-middle text-center text-sm text-toss-blue font-bold">
-                      {loadOwnerBooths(o.id).length}개
+                      {o.boothCount !== undefined ? o.boothCount : loadOwnerBooths(o.id).length}개
                     </td>
 
-                    {/* ✅ 승인취소 버튼: 승인완료 뱃지랑 같은 느낌의 pill 스타일 */}
-                    <td className="p-5 align-middle text-center">
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          revokeApproval(o.id);
-                        }}
-                      >
-                        승인취소
-                      </Button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -276,18 +367,13 @@ const StoreList = () => {
       >
         {selected && (
           <div className="space-y-6">
-            <div className="text-sm text-gray-500 font-bold -mt-4 mb-4">
-              아이디: {selected.id}
-            </div>
-
             {/* 기본 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
                 { label: '이름', value: selected.name },
-                { label: '아이디', value: selected.id },
                 { label: '학과', value: selected.department },
                 { label: '학번', value: selected.studentId },
-                { label: '가입일', value: formatDateTime(selected.createdAt) }
+                { label: '학년', value: (selectedDetail?.grade ?? selected.grade) ? `${selectedDetail?.grade ?? selected.grade}학년` : "-" }
               ].map((item, idx) => (
                 <div key={idx} className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
                   <div className="text-xs font-bold text-gray-500 mb-1">{item.label}</div>
@@ -299,28 +385,128 @@ const StoreList = () => {
             {/* 운영 부스 및 정산 정보 */}
             <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm">
               <div className="text-sm font-extrabold text-toss-dark mb-3">
-                운영 부스 목록 ({loadOwnerBooths(selected.id).length})
+                운영 부스 목록 ({selectedDetail ? selectedDetail.booths.length : 0})
               </div>
               <div className="space-y-3">
-                {loadOwnerBooths(selected.id).length === 0 ? (
+                {!selectedDetail ? (
+                  <div className="text-center py-6 text-xs text-gray-400 font-bold bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    불러오는 중...
+                  </div>
+                ) : selectedDetail.booths.length === 0 ? (
                   <div className="text-center py-6 text-xs text-gray-400 font-bold bg-gray-50 rounded-xl border border-dashed border-gray-200">
                     운영 중인 부스가 없습니다.
                   </div>
                 ) : (
-                  loadOwnerBooths(selected.id).map((booth, idx) => (
-                    <div key={idx} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
+                  selectedDetail.booths.map((booth, idx) => {
+                    const status = booth.boothStatus;
+                    const isDeleted = status === "DELETED";
+                    const isSuspended = status === "SUSPENDED" || status === "REJECTED";
+                    const isApproved = status === "APPROVED";
+                    const isPending = status === "PENDING";
+
+                    // 상태 뱃지 설정
+                    let statusBadge = null;
+                    if (isApproved) {
+                      statusBadge = (
+                        <span className="text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-bold">
+                          {booth.open ? "영업중" : "영업 마감"}
+                        </span>
+                      );
+                    } else if (isPending) {
+                      statusBadge = (
+                        <span className="text-[10px] bg-yellow-50 text-yellow-600 px-1.5 py-0.5 rounded font-bold">
+                          승인 대기
+                        </span>
+                      );
+                    } else if (isSuspended) {
+                      statusBadge = (
+                        <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">
+                          운영 중지됨
+                        </span>
+                      );
+                    } else if (isDeleted) {
+                      statusBadge = (
+                        <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-bold">
+                          삭제됨
+                        </span>
+                      );
+                    }
+
+                    return (
+                    <div key={idx} className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isDeleted ? 'bg-gray-100 border-gray-200 opacity-60' : isPending ? 'bg-yellow-50/30 border-yellow-200' : 'bg-gray-50 border-gray-100'}`}>
+                      <div className="flex-1">
                         <p className="text-xs font-bold text-toss-blue mb-0.5">부스명</p>
-                        <p className="text-sm font-extrabold text-toss-dark">{booth.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-extrabold ${(isSuspended || isDeleted) ? 'text-gray-400 line-through' : 'text-toss-dark'}`}>{booth.name}</p>
+                          {statusBadge}
+                        </div>
                       </div>
-                      <div className="sm:text-right">
+                      <div className="sm:text-right flex-1">
                         <p className="text-[10px] font-bold text-gray-400 mb-0.5">계좌 정보</p>
                         <p className="text-xs font-bold text-gray-600">
                           {booth.bank || "은행 미설정"} | {prettyAccount(booth.accountNumber)}
                         </p>
                       </div>
+                      <div className="flex-shrink-0 flex gap-2">
+                        {isDeleted ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              resumeBoothApproval(booth);
+                            }}
+                          >
+                            복구
+                          </Button>
+                        ) : isPending ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                resumeBoothApproval(booth);
+                              }}
+                            >
+                              승인
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                suspendBoothApproval(booth, selected.id);
+                              }}
+                            >
+                              거절
+                            </Button>
+                          </>
+                        ) : isSuspended ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              resumeBoothApproval(booth);
+                            }}
+                          >
+                            중지 해제
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              suspendBoothApproval(booth, selected.id);
+                            }}
+                          >
+                            운영 중지
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  ))
+                  )})
                 )}
               </div>
             </div>

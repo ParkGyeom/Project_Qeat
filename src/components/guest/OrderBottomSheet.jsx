@@ -53,7 +53,7 @@ const OrderBottomSheet = ({
       // 3. 후속 처리
       clearCart();
       onClose?.();
-      navigate(`/guest/order-complete?table=${tableNumber}`);
+      navigate(`/guest/order-complete?table=${tableNumber}&token=${tableToken}`);
     } catch (e) {
       // ✅ 흰화면 방지 + 안내
       if (String(e?.response?.data?.message || "") === "BUSINESS_CLOSED") {

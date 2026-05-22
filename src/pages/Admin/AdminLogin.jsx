@@ -1,33 +1,50 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const ADMIN_SESSION_KEY = "admin_session";
-const ADMIN_PIN_KEY = "admin_pin";
-const DEFAULT_ADMIN_PIN = "0000";
+import { loginApi } from "../../api/authApi";
 
-const getAdminPin = () =>
-  localStorage.getItem(ADMIN_PIN_KEY) || DEFAULT_ADMIN_PIN;
+const ADMIN_SESSION_KEY = "admin_session";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const [pin, setPin] = useState("");
+  const [id, setId] = useState("");
+  const [pw, setPw] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
 
-    const savedPin = getAdminPin();
+    if (!id.trim() || !pw.trim()) {
+      return setError("아이디와 비밀번호를 모두 입력해주세요.");
+    }
 
-    if (!pin.trim()) return setError("비밀번호를 입력해주세요.");
-    if (pin !== savedPin) return setError("비밀번호가 올바르지 않습니다.");
+    try {
+      const response = await loginApi(id.trim(), pw);
+      console.log("Admin Login Response:", response);
+      
+      // 혹시 백엔드에서 role 검사를 하지 않을 경우를 대비해 프론트에서도 검증
+      if (response?.role !== "ADMIN") {
+        return setError("관리자 권한이 없는 계정입니다.");
+      }
 
-    localStorage.setItem(
-      ADMIN_SESSION_KEY,
-      JSON.stringify({ ok: true, loginAt: new Date().toISOString() })
-    );
+      localStorage.setItem(
+        ADMIN_SESSION_KEY,
+        JSON.stringify({ 
+          ok: true, 
+          id: response?.studentNumber || id.trim(),
+          name: response?.name || "관리자",
+          role: response?.role || "ADMIN",
+          loginAt: new Date().toISOString() 
+        })
+      );
 
-    navigate("/admin/booth-approval");
+      navigate("/admin/booth-approval");
+    } catch (err) {
+      console.error(err);
+      const serverMessage = err.response?.data?.message;
+      setError(serverMessage || "로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.");
+    }
   };
 
   return (
@@ -90,21 +107,31 @@ const AdminLogin = () => {
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-bold text-toss-dark mb-2">
-                비밀번호
-              </label>
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/[^\d]/g, ""))}
-                inputMode="numeric"
-                placeholder="••••"
-                className="w-full p-4 bg-gray-50 text-lg tracking-widest text-left font-bold rounded-xl outline-none border border-gray-100 focus:border-toss-blue focus:ring-4 focus:ring-toss-blue/10 transition-all placeholder:text-gray-300 placeholder:tracking-normal"
-              />
-              <p className="text-left text-[13px] text-gray-400 mt-3 font-medium">
-                * 숫자만 입력할 수 있습니다.
-              </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-toss-dark mb-2">
+                  학번
+                </label>
+                <input
+                  type="text"
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="20231234"
+                  className="w-full p-4 bg-gray-50 text-[15px] text-left font-bold rounded-xl outline-none border border-gray-100 focus:border-toss-blue focus:ring-4 focus:ring-toss-blue/10 transition-all placeholder:text-gray-300 placeholder:font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-toss-dark mb-2">
+                  비밀번호
+                </label>
+                <input
+                  type="password"
+                  value={pw}
+                  onChange={(e) => setPw(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full p-4 bg-gray-50 text-[15px] text-left font-bold rounded-xl outline-none border border-gray-100 focus:border-toss-blue focus:ring-4 focus:ring-toss-blue/10 transition-all placeholder:text-gray-300 placeholder:font-medium"
+                />
+              </div>
             </div>
 
             <div className="pt-2">
