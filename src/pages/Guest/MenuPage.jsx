@@ -6,7 +6,6 @@ import CartFloatingBar from "../../components/guest/CartFloatingBar";
 import OrderBottomSheet from "../../components/guest/OrderBottomSheet";
 
 import { MENU_CATEGORIES } from "../../constants/categories";
-import { getMenus } from "../../utils/mockApi";
 
 // Remove local businessStatus imports
 
@@ -54,57 +53,27 @@ const MenuPage = () => {
         // 서버에서 받아온 영업 상태 (명시적으로 false일 때만 마감으로 간주)
         setIsClosed(data.open === false);
 
-        if (data.open !== false && data.openTime && data.closeTime) {
+        if (data.open !== false && data.closeTime) {
           const now = new Date();
-          const [oh, om] = data.openTime.split(":").map(Number);
           const [ch, cm] = data.closeTime.split(":").map(Number);
-          
-          const openDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), oh, om, 0);
           const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
-          
-          // 자정을 넘기는 영업시간 지원 (예: 18:00 ~ 02:00)
-          if (closeDate <= openDate) {
-            if (now.getHours() < ch) {
-              openDate.setDate(openDate.getDate() - 1);
-            } else {
-              closeDate.setDate(closeDate.getDate() + 1);
-            }
-          }
 
-          const isTimeBetween = now.getTime() >= openDate.getTime() && now.getTime() < closeDate.getTime();
-          
-          if (!isTimeBetween) {
-            // 시간이 아닐 때는 강제 마감 처리
-            setIsClosed(true);
-            setClosingSoon(false);
-            setMinLeft(null);
-          } else {
-            // 시간 안에 들어왔다면 정상 영업중
-            const diffMs = closeDate.getTime() - now.getTime();
-            const diffMin = Math.floor(diffMs / 60000);
-            
-            if (diffMin > 0 && diffMin <= 60) {
-              setClosingSoon(true);
-              setMinLeft(diffMin);
-            } else {
-              setClosingSoon(false);
-              setMinLeft(null);
+          if (data.openTime) {
+            const [oh, om] = data.openTime.split(":").map(Number);
+            const openDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), oh, om, 0);
+            if (closeDate <= openDate) {
+              if (now.getHours() < ch) {
+                openDate.setDate(openDate.getDate() - 1);
+              } else {
+                closeDate.setDate(closeDate.getDate() + 1);
+              }
             }
           }
-        } else if (data.open !== false && data.closeTime) {
-          // 오픈 시간 없이 마감 시간만 있는 경우
-          const now = new Date();
-          const [ch, cm] = data.closeTime.split(":").map(Number);
-          const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
           
           const diffMs = closeDate.getTime() - now.getTime();
           const diffMin = Math.floor(diffMs / 60000);
-
-          if (diffMs <= 0) {
-            setIsClosed(true);
-            setClosingSoon(false);
-            setMinLeft(null);
-          } else if (diffMin > 0 && diffMin <= 60) {
+          
+          if (diffMs > 0 && diffMin > 0 && diffMin <= 60) {
             setClosingSoon(true);
             setMinLeft(diffMin);
           } else {

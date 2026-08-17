@@ -73,85 +73,40 @@ const BusinessManage = () => {
       if (ot && !openTime) setOpenTime(ot);
       if (ct && !closeTime) setCloseTime(ct);
 
-      // 마감 임박 및 프론트엔드 자동 마감/오픈 계산
-      // (백엔드 스케줄러가 없을 때를 대비해 로컬 시간에 기반하여 임시 처리)
-      if (ot && ct) {
-        const now = new Date();
-        const [oh, om] = ot.split(":").map(Number);
-        const [ch, cm] = ct.split(":").map(Number);
-        
-        const openDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), oh, om, 0);
-        const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
-        
-        // 자정을 넘기는 영업시간 지원 (예: 18:00 ~ 02:00)
-        if (closeDate <= openDate) {
-          if (now.getHours() < ch) {
-            openDate.setDate(openDate.getDate() - 1);
-          } else {
-            closeDate.setDate(closeDate.getDate() + 1);
-          }
-        }
+      // 영업 시간 설정이 없는 경우
+      if (data.open !== undefined) {
+        setIsClosed(!data.open);
+      }
 
-        const isTimeBetween = now.getTime() >= openDate.getTime() && now.getTime() < closeDate.getTime();
-        
-        if (!isTimeBetween) {
-          // 시간이 아닐 때는 무조건 마감 처리
-          setIsClosed(true);
-          setClosingSoon(false);
-          setMinLeft(null);
-        } else {
-          // 시간이 맞을 때 백엔드 open이 false면 (수동 마감), 수동 마감 존중
-          if (data.open !== undefined && data.open === false) {
-            setIsClosed(true);
-            setClosingSoon(false);
-            setMinLeft(null);
-          } else {
-            // 수동 마감이 아니면 정상 영업중
-            setIsClosed(false);
-            
-            const diffMs = closeDate.getTime() - now.getTime();
-            const diffMin = Math.floor(diffMs / 60000);
-            if (diffMin > 0 && diffMin <= 60) {
-              setClosingSoon(true);
-              setMinLeft(diffMin);
+      // 마감 임박 계산
+      if (data.open !== false && ct) {
+        const now = new Date();
+        const [ch, cm] = ct.split(":").map(Number);
+        const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
+
+        if (ot) {
+          const [oh, om] = ot.split(":").map(Number);
+          const openDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), oh, om, 0);
+          if (closeDate <= openDate) {
+            if (now.getHours() < ch) {
+              openDate.setDate(openDate.getDate() - 1);
             } else {
-              setClosingSoon(false);
-              setMinLeft(null);
+              closeDate.setDate(closeDate.getDate() + 1);
             }
           }
         }
-      } else if (ct) {
-        // 오픈 시간 없이 마감 시간만 있는 경우 기존 로직 유지
-        const now = new Date();
-        const [ch, cm] = ct.split(":").map(Number);
-        const closeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
-        
+
         const diffMs = closeDate.getTime() - now.getTime();
         const diffMin = Math.floor(diffMs / 60000);
 
-        if (diffMs <= 0) {
-          setIsClosed(true);
+        if (diffMs > 0 && diffMin > 0 && diffMin <= 60) {
+          setClosingSoon(true);
+          setMinLeft(diffMin);
+        } else {
           setClosingSoon(false);
           setMinLeft(null);
-        } else {
-          if (data.open !== undefined && data.open === false) {
-            setIsClosed(true);
-          } else {
-            setIsClosed(false);
-            if (diffMin > 0 && diffMin <= 60) {
-              setClosingSoon(true);
-              setMinLeft(diffMin);
-            } else {
-              setClosingSoon(false);
-              setMinLeft(null);
-            }
-          }
         }
       } else {
-        // 영업 시간 설정이 없는 경우
-        if (data.open !== undefined) {
-          setIsClosed(!data.open);
-        }
         setClosingSoon(false);
         setMinLeft(null);
       }

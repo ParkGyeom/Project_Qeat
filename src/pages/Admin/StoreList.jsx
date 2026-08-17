@@ -4,31 +4,7 @@ import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import { rejectBooth, getBoothOperators, getOperatorDetail, suspendBooth, approveBooth } from "../../api/boothApi";
 
-const OWNERS_KEY = "owners";
-
-const loadOwners = () => {
-  try {
-    const raw = localStorage.getItem(OWNERS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const BOOTHS_KEY = "owner_booths_v1";
-const loadOwnerBooths = (ownerId) => {
-  try {
-    const allBooths = JSON.parse(localStorage.getItem(BOOTHS_KEY) || "{}");
-    return allBooths[ownerId] || [];
-  } catch {
-    return [];
-  }
-};
-
-const saveOwners = (owners) => {
-  localStorage.setItem(OWNERS_KEY, JSON.stringify(owners));
-};
+// Local Storage 로직 완전히 제거됨
 
 const formatDateTime = (iso) => {
   if (!iso) return "-";
@@ -84,25 +60,15 @@ const StoreList = () => {
         approved: true // 백엔드 API는 승인 완료된 사용자만 반환
       }));
       
-      // 로컬스토리지에 있는 가입대기자(approved: false) 유지
-      const localOwners = loadOwners().filter(o => !o.approved);
-      
-      setOwners([...formatted, ...localOwners]);
+      setOwners(formatted);
     } catch (err) {
       console.error("Failed to fetch operators:", err);
-      // 에러 시 로컬 데이터라도 보여줌
-      setOwners(loadOwners());
+      setOwners([]);
     }
   };
 
   useEffect(() => {
     fetchOperators();
-    
-    const onStorage = (e) => {
-      if (e.key === OWNERS_KEY) fetchOperators();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const approvedOwners = useMemo(() => {
@@ -118,34 +84,13 @@ const StoreList = () => {
     });
   }, [owners, q]);
 
-  const totalApproved = owners.filter((o) => o.approved).length;
-  const totalPending = owners.filter((o) => !o.approved).length;
+  const totalApproved = owners.length;
 
   const hasQuery = q.trim().length > 0;
 
   const refresh = () => fetchOperators();
 
-  // 승인 취소 = approved:false (가입승인 탭으로 다시 넘어가게 됨)
-  const revokeApproval = (ownerId) => {
-    const target = owners.find((o) => o.id === ownerId);
-    if (!target) return;
 
-    if (
-      window.confirm(
-        `'${
-          target.name || target.id
-        }' 계정의 승인을 취소하시겠습니까?\n(다시 승인 전까지 로그인 불가)`
-      )
-    ) {
-      const next = owners.map((o) =>
-        o.id === ownerId ? { ...o, approved: false } : o
-      );
-      saveOwners(next);
-      setOwners(next);
-
-      setSelected((prev) => (prev?.id === ownerId ? null : prev));
-    }
-  };
 
   // 부스 운영 중지
   const suspendBoothApproval = async (booth, ownerId) => {
@@ -163,9 +108,6 @@ const StoreList = () => {
     }
 
     try {
-      const allBooths = JSON.parse(localStorage.getItem(BOOTHS_KEY) || "{}");
-      // 로컬 스토리지에만 저장되는 데이터가 아니라 서버를 통해 다시 데이터를 받아올 수 있도록
-      // 상세 데이터가 있으면 상태만 변경(임시 처리)
       if (selectedDetail) {
         setSelectedDetail({
           ...selectedDetail,
@@ -237,21 +179,13 @@ const StoreList = () => {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+      <div className="grid grid-cols-1 mb-6">
         <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-50">
           <p className="text-toss-light text-[15px] font-bold mb-2">
             승인 완료(이용 가능)
           </p>
           <h3 className="text-3xl font-black text-toss-blue tracking-tight">
             {totalApproved}건
-          </h3>
-        </div>
-        <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-50">
-          <p className="text-toss-light text-[15px] font-bold mb-2">
-            승인 대기
-          </p>
-          <h3 className="text-3xl font-black text-toss-dark tracking-tight">
-            {totalPending}건
           </h3>
         </div>
       </div>
@@ -330,7 +264,7 @@ const StoreList = () => {
                     </td>
 
                     <td className="p-5 align-middle text-center text-sm text-toss-blue font-bold">
-                      {o.boothCount !== undefined ? o.boothCount : loadOwnerBooths(o.id).length}개
+                      {o.boothCount !== undefined ? o.boothCount : 0}개
                     </td>
 
                   </tr>

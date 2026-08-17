@@ -114,7 +114,6 @@ const AdminLayout = () => {
     ? [
         { id: "boothApproval", name: "부스 가입 승인", path: "/admin/booth-approval", count: pendingBoothCount },
         { id: "stores", name: "서비스 이용 목록", path: "/admin/stores" },
-        { id: "settings", name: "관리자 설정", path: "/admin/settings" },
       ]
     : [
         { 
